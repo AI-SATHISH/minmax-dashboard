@@ -44,12 +44,12 @@ LOCATION_MATCH = {
     "Hyderabad": ["hyderabad"],
 }
 # Location logins are also capped at Sub Band 11A and below (excludes 11B onward).
-LOCATION_MAX_SUBBAND_RAW = os.environ.get("LOCATION_MAX_SUBBAND", "11A")
+LOCATION_MAX_SUBBAND_RAW = os.environ.get("LOCATION_MAX_SUBBAND", "11B")
 
 # Team login — Sub Band 8A and below (excludes 8B onward), excluding the HR Costing Head.
 TEAM_USER = os.environ.get("TEAM_USER", "Hrteam")
 TEAM_PASS = os.environ.get("TEAM_PASS", "Urban@2026")
-TEAM_MAX_SUBBAND_RAW = os.environ.get("TEAM_MAX_SUBBAND", "8A")
+TEAM_MAX_SUBBAND_RAW = os.environ.get("TEAM_MAX_SUBBAND", "8B")
 TEAM_EXCLUDE_COSTHEAD = "hr"
 
 app = Flask(__name__)
