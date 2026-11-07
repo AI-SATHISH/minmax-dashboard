@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Min &amp; Max</title>
+<style>
+  :root {
+    --bg: #fbf1f6; --surface: #ffffff; --surface-2: #fbe6f0; --head: #f3c6dc; --border: #ecc9da;
+    --text: #2a1720; --muted: #7a5c69; --accent: #b0306f; --accent-soft: #f7d9e8;
+    --min: #1f8a5b; --max: #c2410c; --bar: #e7a3c4; --chartbar: #c75a92; --median: #2a1720;
+    --shadow: 0 1px 3px rgba(120,30,70,.08);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #171015; --surface: #21171d; --surface-2: #2b1e26; --head: #3a2531; --border: #3d2a35;
+      --text: #f3e6ec; --muted: #b59aa7; --accent: #f08cbf; --accent-soft: #3a2230;
+      --min: #4cc38a; --max: #f08a5d; --bar: #7a3d5c; --chartbar: #e27aaf; --median: #f3e6ec;
+      --shadow: none;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+    font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  .wrap { max-width: 1400px; margin: 0 auto; padding: 20px 16px 48px; }
+  header { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; justify-content: space-between; margin-bottom: 16px; }
+  h1 { font-size: 22px; margin: 0; letter-spacing: -.01em; }
+  h2 { font-size: 17px; margin: 0; }
+  .sub { color: var(--muted); font-size: 13px; }
+  button, select, input { font: inherit; color: var(--text); }
+  .btn { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 7px 12px; cursor: pointer; }
+  .btn:hover { border-color: var(--accent); }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; box-shadow: var(--shadow); }
+  .filters { padding: 14px; display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); margin-bottom: 14px; }
+  .filters label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); }
+  select, input[type=search] { background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; padding: 7px 9px; min-width: 0; }
+  .filters .actions { display: flex; align-items: flex-end; gap: 8px; }
+  .kpis { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); margin-bottom: 14px; }
+  .kpi { padding: 14px 16px; }
+  .kpi .label { font-size: 12px; color: var(--muted); }
+  .kpi .value { font-size: 22px; font-weight: 650; margin-top: 2px; font-variant-numeric: tabular-nums; }
+  .kpi .who { font-size: 12px; color: var(--muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .kpi.min .value { color: var(--min); } .kpi.max .value { color: var(--max); }
+  .controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 14px; }
+  .seg { display: inline-flex; background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; padding: 2px; }
+  .seg button { border: 0; background: transparent; padding: 5px 10px; border-radius: 6px; cursor: pointer; color: var(--muted); }
+  .seg button.on { background: var(--surface); color: var(--text); box-shadow: var(--shadow); font-weight: 600; }
+  .grid2 { display: grid; gap: 14px; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); align-items: stretch; }
+  .grid2 > .panel { display: flex; flex-direction: column; }
+  @media (max-width: 1100px) { .grid2 { grid-template-columns: 1fr; } }
+  .phead { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; padding: 14px 16px 10px; min-height: 94px; box-sizing: border-box; }
+  .tablewrap { overflow: auto; max-height: 460px; height: 460px; border-top: 1px solid var(--border); }
+  table { width: 100%; table-layout: fixed; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+  th:nth-child(1), td:nth-child(1) { width: 20%; }
+  th:nth-child(2), td:nth-child(2) { width: 7%; }
+  th:nth-child(3), td:nth-child(3), th:nth-child(4), td:nth-child(4), th:nth-child(5), td:nth-child(5), th:nth-child(6), td:nth-child(6) { width: 11%; }
+  th:nth-child(7), td:nth-child(7), th:nth-child(8), td:nth-child(8) { width: 11.5%; }
+  th, td { padding: 6px 8px; text-align: right; border-bottom: 1px solid var(--border); white-space: nowrap; font-size: 13px; }
+  thead th { white-space: normal; word-break: break-word; line-height: 1.2; vertical-align: bottom; }
+  tbody td:first-child, tfoot td:first-child { white-space: normal; word-break: break-word; max-width: 160px; }
+  th:first-child, td:first-child { text-align: left; }
+  thead th { font-size: 12px; color: var(--text); font-weight: 700; cursor: pointer; user-select: none; position: sticky; top: 0; background: var(--head); z-index: 1; text-transform: uppercase; letter-spacing: .02em; }
+  th.sorted::after { content: " ▾"; } th.sorted.asc::after { content: " ▴"; }
+  tbody tr { cursor: pointer; } tbody tr:hover { background: var(--surface-2); }
+  td:first-child { font-weight: 600; }
+  tfoot { box-shadow: 0 -8px 0 var(--surface); }
+  tfoot td { position: sticky; bottom: 0; background: var(--head); font-weight: 700; font-size: 15px; border-bottom: 0; padding-top: 12px; }
+  td.min { color: var(--min); font-weight: 600; } td.max { color: var(--max); font-weight: 600; }
+  td.rangecell { min-width: 140px; width: 22%; }
+  .range { position: relative; height: 14px; }
+  .range .track { position: absolute; top: 6px; left: 0; right: 0; height: 2px; background: var(--border); }
+  .range .bar { position: absolute; top: 3px; height: 8px; background: var(--bar); border-radius: 4px; min-width: 3px; }
+  .range .med { position: absolute; top: 0; width: 2px; height: 14px; background: var(--median); }
+  .range .dot3 { position: absolute; top: 3px; width: 8px; height: 8px; border-radius: 50%; border: 1.5px solid var(--surface); box-shadow: 0 0 0 1px rgba(0,0,0,.12); }
+  .range .dmin { background: var(--min); z-index: 2; }
+  .range .dmax { background: var(--max); z-index: 2; }
+  .range .dmed { background: var(--median); z-index: 1; }
+  .empty, .status { padding: 40px 16px; text-align: center; color: var(--muted); }
+  .status.err { color: var(--max); }
+  .foot { padding: 10px 16px; font-size: 12px; color: var(--muted); }
+  #chart svg { display: block; width: 100%; height: auto; }
+  #chart .bar { fill: var(--chartbar); stroke: var(--border); stroke-width: 1; cursor: pointer; } #chart .bar:hover { opacity: .8; }
+  #chart text { fill: var(--text); font-size: 12px; font-family: inherit; }
+  #chart .lbl { font-weight: 700; } #chart .axis { fill: var(--muted); font-size: 11px; }
+  #chart .grid { stroke: var(--border); }
+  #salaryChart svg { display: block; width: 100%; height: auto; }
+  #salaryChart .bar { fill: var(--accent); cursor: pointer; } #salaryChart .bar:hover { opacity: .8; }
+  #salaryChart text { fill: var(--text); font-size: 9px; font-family: inherit; }
+  #salaryChart .lbl { font-weight: 700; } #salaryChart .axis { fill: var(--muted); font-size: 8px; }
+  #salaryChart .grid { stroke: var(--border); }
+  .chartbody { padding: 4px 16px 4px; border-top: 1px solid var(--border); }
+  #chart.chartbody { height: 460px; display: flex; align-items: center; }
+  #chart.chartbody svg { height: 100%; width: 100%; }
+  /* Drawer */
+  .scrim { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: none; z-index: 10; }
+  .drawer { position: fixed; top: 0; right: 0; bottom: 0; width: min(640px, 100%); background: var(--surface);
+    border-left: 1px solid var(--border); transform: translateX(100%); transition: transform .2s ease; z-index: 11; display: flex; flex-direction: column; }
+  .drawer.open { transform: none; } .scrim.open { display: block; }
+  .drawer header { padding: 16px; margin: 0; border-bottom: 1px solid var(--border); }
+  .drawer .body { overflow: auto; flex: 1; }
+  .drawer td:nth-child(2), .drawer th:nth-child(2) { text-align: left; }
+  .drawer td:first-child { font-weight: 400; }
+  .tag { display: inline-block; font-size: 11px; padding: 1px 6px; border-radius: 10px; margin-left: 6px; font-weight: 600; }
+  .tag.min { background: color-mix(in srgb, var(--min) 18%, transparent); color: var(--min); }
+  .tag.max { background: color-mix(in srgb, var(--max) 18%, transparent); color: var(--max); }
+  .demo { background: var(--accent-soft); color: var(--accent); border-radius: 8px; padding: 8px 12px; font-size: 13px; margin-bottom: 14px; display: none; }
+  /* View only: no selecting/copying text and nothing to print */
+  body { -webkit-user-select: none; user-select: none; }
+  input { -webkit-user-select: text; user-select: text; }
+  @media print { body * { display: none !important; } body::after { content: "Printing is disabled for this dashboard."; } }
+  .tablewrap { -webkit-overflow-scrolling: touch; }
+  @media (max-width: 640px) {
+    .kpi .value { font-size: 18px; } h1 { font-size: 19px; }
+    .wrap { padding: 12px 10px 32px; }
+    header { gap: 8px; }
+    header > div[style] button { padding: 6px 10px; font-size: 13px; }
+    th, td { padding: 6px 8px; font-size: 12px; }
+    .filters { grid-template-columns: 1fr; padding: 10px; }
+    .kpi { padding: 10px 12px; }
+    .kpi .label { font-size: 11px; }
+    .controls { gap: 6px 10px; }
+    #chart svg { min-width: 480px; }
+    .chartbody { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Min &amp; Max · Salary Ranges</h1>
+      <div class="sub" id="meta">Loading…</div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn" id="resetBtn">Reset filters</button>
+      <button class="btn primary" id="refreshBtn">↻ Refresh</button>
+      <button class="btn" id="logoutBtn">Logout</button>
+    </div>
+  </header>
+
+  <div class="demo" id="demoNote">Demo mode: showing sample data. Deployed as a Google Apps Script web app, this page shows your live data (view only).</div>
+  <div id="roleBanner" style="display:none; border-radius:10px; padding:10px 14px; margin-bottom:14px; font-size:13px; font-weight:600;"></div>
+
+  <section class="panel filters" id="filters"></section>
+
+  <div class="controls">
+    <span class="sub">Salary</span><div class="seg" id="metricSeg"></div>
+    <div style="margin-left:auto; display:flex; align-items:center; gap:10px;">
+      <span class="sub">Numbers</span><div class="seg" id="fmtSeg"><button data-f="full">1,15,390</button><button data-f="compact">₹1.15 L</button></div>
+    </div>
+  </div>
+
+  <section class="kpis" id="kpis"></section>
+
+  <div class="grid2">
+    <section class="panel">
+      <div class="phead">
+        <h2 id="tableTitle"></h2>
+        <label class="sub">Group by <select id="groupBy"></select></label>
+      </div>
+      <div class="tablewrap" id="tableArea"><div class="status">Loading data…</div></div>
+      <div class="foot" id="foot"></div>
+    </section>
+
+    <section class="panel">
+      <div class="phead">
+        <h2 id="chartTitle"></h2>
+        <div class="seg" id="aggSeg"><button data-a="sum">Sum</button><button data-a="avg">Average</button><button data-a="count">Headcount</button></div>
+      </div>
+      <div class="chartbody" id="chart"></div>
+      <div class="foot" id="chartFoot"></div>
+    </section>
+  </div>
+
+  <section class="panel" style="margin-top:14px;" id="recruiterPanel">
+    <div class="phead">
+      <h2>🎯 Recruiter Salary Check</h2>
+    </div>
+    <div style="padding:16px;">
+      <div class="filters" style="margin-bottom:0;" id="recruiterForm">
+        <label>Location<select id="rLoc"><option value="">All Locations</option></select></label>
+        <label>Department<select id="rDept"><option value="">Select…</option></select></label>
+        <label>Band<select id="rBand"><option value="">Select…</option></select></label>
+        <label>Designation<select id="rDesig"><option value="">Select…</option></select></label>
+        <label>Salary metric<select id="rMetric"></select></label>
+        <label>Proposed / Actual Salary<input type="number" id="rSalary" placeholder="e.g. 65000"></label>
+        <div class="actions"><button class="btn primary" id="rCalcBtn">Calculate</button></div>
+      </div>
+      <div id="recruiterResult" style="margin-top:16px;"></div>
+    </div>
+  </section>
+</div>
+
+<div class="scrim" id="scrim"></div>
+<aside class="drawer" id="drawer" aria-hidden="true">
+  <header>
+    <div><h2 id="drawerTitle"></h2><div class="sub" id="drawerSub"></div></div>
+    <button class="btn" id="closeDrawer">Close</button>
+  </header>
+  <div class="body" id="drawerBody"></div>
+</aside>
+
+<script>
+// ---- Column mapping: matched by header text, so column order in the sheet can change ----
+const FIELDS = {
+  id: ['emp id', 'employee id'], name: ['emp name', 'employee name'], band: ['band'], sub: ['sub band'],
+  desig: ['designation'], dept: ['department'], role: ['role'], salHead: ['salary heads'],
+  costHead: ['costing heads'], doj: ['doj', 'date of joining'], loc: ['location'], gross: ['gross monthly'],
+  other: ['other allowances monthly'], vp: ['annual varaible pay', 'annual variable pay'], ctc: ['annual ctc'],
+  // Optional: total experience. If present it drives the tenure chart, otherwise tenure is worked out from DOJ.
+  exp: ['exp', 'experience', 'total exp', 'total experience', 'exp tenure', 'experience (years)', 'total experience (years)', 'total experience (in years)']
+};
+const METRICS = [
+  { key: 'gross', label: 'Gross Monthly' },
+  { key: 'ctc', label: 'Annual CTC' },
+  { key: 'vp', label: 'Variable Pay' }
+];
+const GROUPS = [
+  { key: 'desig', label: 'Designation' }, { key: 'band', label: 'Band' },
+  { key: 'dept', label: 'Department' }, { key: 'role', label: 'Role' }, { key: 'costHead', label: 'Costing Head' },
+  { key: 'salHead', label: 'Salary Head' }, { key: 'loc', label: 'Location' }
+];
+const FILTERS = [
+  { key: 'costHead', label: 'Costing Head' }, { key: 'dept', label: 'Department' }, { key: 'desig', label: 'Designation' },
+  { key: 'role', label: 'Role' }, { key: 'loc', label: 'Location' },
+  { key: 'tenure', label: 'EXP Tenure' }
+];
+// Locations excluded from the dashboard entirely (case-insensitive) - their employees are not loaded.
+const HIDDEN_LOCATIONS = ['gcc'];
+// Top-to-bottom order matches the chart (longest tenure first).
+const BUCKETS = [['20y Above', 20, Infinity], ['15y - 20y', 15, 20], ['12y - 15y', 12, 15], ['9y - 12y', 9, 12],
+  ['6y - 9y', 6, 9], ['3y - 6y', 3, 6], ['1y - 3y', 1, 3], ['0 - 1y', 0, 1]];
+
+const state = { data: [], filters: {}, search: '', groupBy: 'desig', metric: 'gross', fmt: 'full', agg: 'sum',
+  sortKey: 'group', sortAsc: true, summary: [], tenureSource: '', showBand: false };
+const $ = id => document.getElementById(id);
+const norm = s => String(s).toLowerCase().replace(/\s+/g, ' ').trim();
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const natural = (a, b) => String(a).localeCompare(String(b), undefined, { numeric: true, sensitivity: 'base' });
+
+function compact(n) {
+  const a = Math.abs(n);
+  if (a >= 1e7) return '₹' + (n / 1e7).toFixed(2) + ' Cr';
+  if (a >= 1e5) return '₹' + (n / 1e5).toFixed(2) + ' L';
+  return '₹' + Math.round(n).toLocaleString('en-IN');
+}
+const full = n => Math.round(n).toLocaleString('en-IN');
+const fmt = n => (n == null || isNaN(n)) ? '—' : (state.fmt === 'full' ? full(n) : compact(n));
+const kpiFmt = n => (n == null || isNaN(n)) ? '—' : (state.fmt === 'full' ? '₹' + full(n) : compact(n));
+const inr = n => (n == null || isNaN(n)) ? '—' : compact(n);
+const inrFull = n => (n == null || isNaN(n)) ? '' : '₹' + full(n);
+const num = v => { if (v === '' || v == null) return null; const n = Number(String(v).replace(/[₹,\s]/g, '')); return isNaN(n) ? null : n; };
+
+// ---- Tenure ----
+function parseDate(v) {
+  if (v instanceof Date) return v;
+  if (typeof v === 'number' && v > 1000) return new Date(Math.round((v - 25569) * 864e5)); // Excel serial
+  const s = String(v || '').trim();
+  let m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (m) return new Date(+m[1], m[2] - 1, +m[3]);
+  m = s.match(/^(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{4})/); // dd-mm-yyyy
+  if (m) return new Date(+m[3], m[2] - 1, +m[1]);
+  const d = new Date(s); return isNaN(d) ? null : d;
+}
+function parseYears(v) {
+  if (v === '' || v == null) return null;
+  if (typeof v === 'number') return v;
+  const s = String(v), nums = s.match(/\d+(\.\d+)?/g);
+  if (!nums) return null;
+  let y = +nums[0];
+  if (nums[1] && /m/i.test(s.slice(s.indexOf(nums[0]) + nums[0].length))) y += nums[1] / 12; // "5 Years 3 Months"
+  return y;
+}
+function bucketOf(years) {
+  if (years == null || years < 0) return '';
+  const b = BUCKETS.find(([, lo, hi]) => years >= lo && years < hi);
+  return b ? b[0] : '';
+}
+
+// ---- Load ----
+function load() {
+  $('tableArea').innerHTML = '<div class="status">Loading data…</div>';
+  fetch('/api/role', { credentials: 'same-origin' })
+    .then(r => r.ok ? r.json() : null)
+    .then(roleInfo => { if (roleInfo) showRoleBanner(roleInfo); })
+    .catch(() => {});
+  fetch('/api/data', { credentials: 'same-origin' })
+    .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+    .then(onData)
+    .catch(err => onError(err));
+}
+function showRoleBanner(info) {
+  const b = $('roleBanner');
+  if (info.role === 'restricted') {
+    b.style.display = 'block';
+    b.style.background = '#fff4e5';
+    b.style.color = '#92400e';
+    b.style.border = '1px solid #fcd9a4';
+    b.textContent = `👤 Restricted view — showing Sub Band ${info.maxSubBand} and below only`;
+  } else if (info.role === 'location') {
+    b.style.display = 'block';
+    b.style.background = '#e8f0fe';
+    b.style.color = '#1e40af';
+    b.style.border = '1px solid #bfd4f5';
+    b.textContent = `📍 ${info.location} view — showing ${info.location} employees (Sub Band 11 and below) only`;
+  } else if (info.role === 'team') {
+    b.style.display = 'block';
+    b.style.background = '#f3e8ff';
+    b.style.color = '#6b21a8';
+    b.style.border = '1px solid #e2c6f5';
+    b.textContent = `👥 Team view — Sub Band ${info.maxSubBand} and below, excluding HR Costing Head`;
+  } else {
+    b.style.display = 'block';
+    b.style.background = '#e6f7ee';
+    b.style.color = '#047857';
+    b.style.border = '1px solid #bfe8d4';
+    b.textContent = '👤 Admin view — showing all data';
+  }
+}
+function onError(err) {
+  $('tableArea').innerHTML = `<div class="status err">Could not load data: ${esc(err && err.message || err)}</div>`;
+  $('meta').textContent = '';
+}
+function onData(payload) {
+  const idx = {};
+  const headers = payload.headers.map(norm);
+  for (const [f, names] of Object.entries(FIELDS)) idx[f] = headers.findIndex(h => names.includes(h));
+  const missing = ['desig'].filter(f => idx[f] < 0);
+  if (missing.length) return onError('Columns not found in sheet: ' + missing.join(', '));
+
+  const today = new Date();
+  state.tenureSource = idx.exp >= 0 ? payload.headers[idx.exp].trim() : (idx.doj >= 0 ? 'DOJ' : '');
+  state.data = payload.rows.map(r => {
+    const o = {};
+    for (const f in idx) o[f] = idx[f] < 0 ? '' : r[idx[f]];
+    for (const f of ['band', 'sub', 'desig', 'dept', 'role', 'costHead', 'salHead', 'loc', 'name', 'id'])
+      o[f] = String(o[f] ?? '').trim();
+    for (const m of METRICS) o[m.key] = num(o[m.key]);
+    if (idx.exp >= 0) {
+      const raw = String(o.exp).trim(), label = BUCKETS.find(b => norm(b[0]) === norm(raw));
+      o.expYears = label ? null : parseYears(o.exp);
+      o.tenure = label ? label[0] : bucketOf(o.expYears);
+    } else {
+      const d = parseDate(o.doj);
+      o.expYears = d ? (today - d) / (365.25 * 864e5) : null;
+      o.tenure = d ? bucketOf(o.expYears) : '';
+    }
+    return o;
+  }).filter(o => (o.desig || o.gross != null || o.ctc != null) && !HIDDEN_LOCATIONS.includes(norm(o.loc)));
+
+  const t = new Date(payload.fetchedAt);
+  $('meta').textContent = `${state.data.length.toLocaleString('en-IN')} employees · refreshed ${t.toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}`;
+  buildFilters(); render(); initRecruiterTool();
+}
+
+// ---- Controls ----
+function dataFilteredExcept(excludeKey) {
+  return state.data.filter(d => {
+    for (const k in state.filters) {
+      if (k === excludeKey) continue;
+      if (state.filters[k] && d[k] !== state.filters[k]) return false;
+    }
+    return true;
+  });
+}
+function buildFilters() {
+  const f = $('filters');
+  f.innerHTML = '';
+  for (const flt of FILTERS) {
+    const subset = dataFilteredExcept(flt.key);
+    let opts = [...new Set(subset.map(d => d[flt.key]).filter(Boolean))];
+    opts = flt.key === 'tenure' ? BUCKETS.map(b => b[0]).reverse().filter(b => opts.includes(b)) : opts.sort(natural);
+    if (!opts.length) continue;
+    let cur = state.filters[flt.key] || '';
+    if (cur && !opts.includes(cur)) { cur = ''; delete state.filters[flt.key]; }
+    const lab = document.createElement('label');
+    lab.innerHTML = `${flt.label}<select data-key="${flt.key}"><option value="">All</option>${opts.map(o => `<option${o === cur ? ' selected' : ''}>${esc(o)}</option>`).join('')}</select>`;
+    f.appendChild(lab);
+  }
+  const s = document.createElement('label');
+  s.innerHTML = `Search<input type="search" id="search" placeholder="Sub Band, Designation" value="${esc(state.search)}">`;
+  f.appendChild(s);
+
+  f.querySelectorAll('select').forEach(sel => sel.onchange = () => {
+    if (sel.value) state.filters[sel.dataset.key] = sel.value; else delete state.filters[sel.dataset.key];
+    buildFilters(); render();
+  });
+  $('search').oninput = e => { state.search = e.target.value; render(); };
+}
+
+$('groupBy').innerHTML = GROUPS.map(g => `<option value="${g.key}">${g.label}</option>`).join('');
+$('groupBy').onchange = e => { state.groupBy = e.target.value; state.sortKey = 'group'; state.sortAsc = true; render(); };
+$('metricSeg').innerHTML = METRICS.map(m => `<button data-k="${m.key}">${m.label}</button>`).join('');
+$('metricSeg').onclick = e => { const k = e.target.dataset.k; if (k) { state.metric = k; render(); } };
+$('fmtSeg').onclick = e => { const k = e.target.dataset.f; if (k) { state.fmt = k; render(); } };
+$('aggSeg').onclick = e => { const k = e.target.dataset.a; if (k) { state.agg = k; render(); } };
+$('refreshBtn').onclick = load;
+$('resetBtn').onclick = () => { state.filters = {}; state.search = ''; buildFilters(); render(); };
+$('logoutBtn').onclick = () => { window.location.href = '/logout'; };
+$('closeDrawer').onclick = $('scrim').onclick = closeDrawer;
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDrawer(); });
+
+// ---- Stats ----
+function filtered() {
+  const q = norm(state.search);
+  return state.data.filter(d => {
+    for (const k in state.filters) if (state.filters[k] && d[k] !== state.filters[k]) return false;
+    if (q && !norm(`${d.sub} ${d.desig}`).includes(q)) return false;
+    return true;
+  });
+}
+function stats(rows, m) {
+  const valid = rows.filter(r => r[m] != null && r[m] > 0).sort((a, b) => a[m] - b[m]);
+  if (!valid.length) return { count: rows.length, n: 0, sum: 0, rows: [] };
+  const v = valid.map(r => r[m]), n = v.length, sum = v.reduce((a, b) => a + b, 0);
+  const median = n % 2 ? v[(n - 1) / 2] : (v[n / 2 - 1] + v[n / 2]) / 2;
+  return {
+    count: rows.length, n, sum, min: v[0], max: v[n - 1], avg: sum / n, median,
+    minEmp: valid[0], maxEmp: valid[n - 1], ratio: v[0] ? v[n - 1] / v[0] : null, rows: valid
+  };
+}
+const label = (list, k) => list.find(x => x.key === k).label;
+
+// ---- Render ----
+function render() {
+  const m = state.metric, mLabel = label(METRICS, m);
+  [...$('metricSeg').children].forEach(b => b.classList.toggle('on', b.dataset.k === m));
+  [...$('fmtSeg').children].forEach(b => b.classList.toggle('on', b.dataset.f === state.fmt));
+  [...$('aggSeg').children].forEach(b => b.classList.toggle('on', b.dataset.a === state.agg));
+  $('groupBy').value = state.groupBy;
+
+  const rows = filtered();
+  const all = stats(rows, m);
+  $('kpis').innerHTML = `
+    <div class="panel kpi"><div class="label">Employees</div><div class="value">${rows.length.toLocaleString('en-IN')}</div><div class="who">${all.n.toLocaleString('en-IN')} with ${mLabel}</div></div>
+    <div class="panel kpi min"><div class="label">Minimum ${mLabel}</div><div class="value" title="${inrFull(all.min)}">${kpiFmt(all.min)}</div><div class="who">${all.minEmp ? esc(all.minEmp.desig) : '—'}</div></div>
+    <div class="panel kpi"><div class="label">Average</div><div class="value" title="${inrFull(all.avg)}">${kpiFmt(all.avg)}</div><div class="who">Median ${kpiFmt(all.median)}</div></div>
+    <div class="panel kpi max"><div class="label">Maximum ${mLabel}</div><div class="value" title="${inrFull(all.max)}">${kpiFmt(all.max)}</div><div class="who">${all.maxEmp ? esc(all.maxEmp.desig) : '—'}</div></div>`;
+
+  renderTable(rows, all);
+  renderChart(rows);
+}
+
+function renderTable(rows, all) {
+  const m = state.metric, g = state.groupBy, gLabel = label(GROUPS, g);
+  $('tableTitle').textContent = `${label(METRICS, m)} by ${gLabel}`;
+
+  const buckets = new Map();
+  for (const r of rows) { const k = r[g] || '(blank)'; if (!buckets.has(k)) buckets.set(k, []); buckets.get(k).push(r); }
+  let summary = [...buckets].map(([group, rs]) => ({ group, ...stats(rs, m), exp: stats(rs, 'expYears') }));
+  const anyValid = summary.some(s => s.n > 0);
+  state.summary = anyValid ? summary.filter(s => s.n > 0) : summary;
+
+  const { sortKey: sk, sortAsc: asc } = state;
+  state.summary.sort((a, b) => {
+    const r = sk === 'group' ? natural(a.group, b.group) : (a[sk] ?? -Infinity) - (b[sk] ?? -Infinity);
+    return asc ? r : -r;
+  });
+
+  if (!state.summary.length) { $('tableArea').innerHTML = '<div class="empty">No employees match these filters.</div>'; $('foot').textContent = ''; return; }
+
+  const cols = [['group', gLabel], ['count', 'Count'], ['min', 'Min'], ['avg', 'Average'], ['max', 'Max'], ['median', 'Median']];
+  const cell = (v, cls = '') => `<td class="${cls}" title="${inrFull(v)}">${fmt(v)}</td>`;
+  const pct = v => (v == null || isNaN(v)) ? '—' : `${v.toFixed(1)}%`;
+  const ratioCell = (v, lo, hi) => {
+    const color = v == null ? '' : (v < lo ? 'var(--min)' : v > hi ? 'var(--max)' : 'var(--accent)');
+    return `<td style="${color ? `color:${color};font-weight:600` : ''}">${pct(v)}</td>`;
+  };
+
+  $('tableArea').innerHTML = `<table><thead><tr>${cols.map(([k, l]) => `<th data-k="${k}" class="${k === sk ? 'sorted' + (asc ? ' asc' : '') : ''}">${l}</th>`).join('')}<th style="cursor:default" title="Average ÷ Band Midpoint">Comp Ratio</th><th style="cursor:default" title="Where Average sits between Min and Max">Salary Penetration</th></tr></thead><tbody>${
+    state.summary.map((s, i) => {
+      const mid = (s.min != null && s.max != null) ? (s.min + s.max) / 2 : null;
+      const compaRatio = (mid && s.avg != null) ? (s.avg / mid) * 100 : null;
+      const rangePen = (s.max != null && s.min != null && s.max > s.min && s.avg != null) ? ((s.avg - s.min) / (s.max - s.min)) * 100 : null;
+      return `<tr data-i="${i}">
+      <td>${esc(s.group)}</td><td>${s.count}</td>${cell(s.min, 'min')}${cell(s.avg)}${cell(s.max, 'max')}${cell(s.median)}
+      ${ratioCell(compaRatio, 90, 110)}${ratioCell(rangePen, 0, 100)}</tr>`;
+    }).join('')
+  }</tbody><tfoot><tr><td>Total</td><td>${all.count}</td>${cell(all.min)}${cell(all.avg)}${cell(all.max)}${cell(all.median)}<td></td><td></td></tr></tfoot></table>`;
+
+  $('tableArea').querySelectorAll('th[data-k]').forEach(th => th.onclick = () => {
+    const k = th.dataset.k;
+    if (state.sortKey === k) state.sortAsc = !state.sortAsc; else { state.sortKey = k; state.sortAsc = k === 'group'; }
+    render();
+  });
+  $('tableArea').querySelectorAll('tbody tr').forEach(tr => tr.onclick = () => {
+    const s = state.summary[+tr.dataset.i]; openDrawer(`${gLabel}: ${s.group}`, s);
+  });
+
+  const excluded = rows.length - all.n;
+  $('foot').textContent = `${state.summary.length} groups · Min/Max ignore blank or zero values` + (excluded ? ` (${excluded} excluded)` : '') + " · Comp Ratio = Average ÷ Midpoint · Salary Penetration = Average's position between Min and Max · Click a row to see employees";
+}
+
+function renderChart(rows) {
+  const m = state.metric, mLabel = label(METRICS, m), agg = state.agg;
+  const aggLabel = { sum: 'Sum of ' + mLabel, avg: 'Average ' + mLabel, count: 'Headcount' }[agg];
+  $('chartTitle').textContent = `${aggLabel} by EXP Tenure`;
+
+  const data = BUCKETS.map(([b]) => {
+    const s = stats(rows.filter(r => r.tenure === b), m);
+    return { b, s, v: agg === 'count' ? s.count : agg === 'avg' ? (s.avg || 0) : s.sum };
+  });
+  const noTenure = rows.filter(r => !r.tenure).length;
+  $('chartFoot').textContent = (state.tenureSource === 'DOJ' ? 'Tenure = years since Date of Joining (as of today)'
+    : state.tenureSource ? `Tenure from "${state.tenureSource}" column` : 'No DOJ or experience column found')
+    + (noTenure ? ` · ${noTenure} without a tenure value` : '') + ' · Click a bar to see employees';
+
+  const W = 600, top = 8, left = 92, right = 86, bottom = 34;
+  const TARGET_H = 460;
+  const rowH = (TARGET_H - top - bottom) / data.length;
+  const H = TARGET_H;
+  const maxV = Math.max(1, ...data.map(d => d.v));
+  const step = niceStep(maxV / 5), axisMax = Math.ceil(maxV / step) * step;
+  const x = v => left + (v / axisMax) * (W - left - right);
+  const valText = v => agg === 'count' ? v.toLocaleString('en-IN') : fmt(v);
+  const tickText = v => agg === 'count' ? v.toLocaleString('en-IN') : compact(v).replace('₹', '');
+
+  let svg = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(aggLabel)} by EXP Tenure">`;
+  for (let t = 0; t <= axisMax + 1e-9; t += step)
+    svg += `<line class="grid" x1="${x(t)}" x2="${x(t)}" y1="${top}" y2="${H - bottom}"/><text class="axis" x="${x(t)}" y="${H - bottom + 16}" text-anchor="middle">${tickText(t)}</text>`;
+  data.forEach((d, i) => {
+    const y = top + i * rowH, bw = Math.max(d.v ? 2 : 0, x(d.v) - left);
+    svg += `<text class="lbl" x="${left - 10}" y="${y + rowH / 2 + 4}" text-anchor="end">${d.b}</text>`;
+    svg += `<rect class="bar" data-i="${i}" x="${left}" y="${y + 6}" width="${bw}" height="${rowH - 12}" rx="3"><title>${d.b}: ${valText(d.v)} · ${d.s.count} employees</title></rect>`;
+    svg += `<text x="${left + bw + 6}" y="${y + rowH / 2 + 4}">${valText(d.v)}</text>`;
+  });
+  svg += `<text class="axis" x="${(left + W - right) / 2}" y="${H - 4}" text-anchor="middle">${esc(aggLabel)}</text></svg>`;
+  $('chart').innerHTML = svg;
+  $('chart').querySelectorAll('.bar').forEach(el => el.onclick = () => {
+    const d = data[+el.dataset.i]; openDrawer(`EXP Tenure: ${d.b}`, { ...d.s, group: d.b });
+  });
+}
+function niceStep(raw) {
+  const p = Math.pow(10, Math.floor(Math.log10(raw || 1))), f = raw / p;
+  return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 5 ? 5 : 10) * p;
+}
+
+// ---- Salary vs Count chart (removed) ----
+
+function showEmployeeInfo(r, m, mLabel) {
+  $('drawerTitle').textContent = 'Employee';
+  $('drawerSub').textContent = `${mLabel}: ${fmt(r[m])}`;
+  $('drawerBody').innerHTML = `<table><tbody>
+    <tr><td style="font-weight:600;width:40%">Sub Band</td><td>${esc(r.sub || r.band || '—')}</td></tr>
+    <tr><td style="font-weight:600">Designation</td><td>${esc(r.desig || '—')}</td></tr>
+    <tr><td style="font-weight:600">Department</td><td>${esc(r.dept || '—')}</td></tr>
+  </tbody></table>`;
+  $('drawer').classList.add('open'); $('scrim').classList.add('open'); $('drawer').setAttribute('aria-hidden', 'false');
+}
+
+// ---- Recruiter Salary Check ----
+function initRecruiterTool() {
+  $('rMetric').innerHTML = METRICS.map(m => `<option value="${m.key}">${m.label}</option>`).join('');
+
+  const uniq = (key, filterFn) => [...new Set(state.data.filter(filterFn).map(d => d[key]).filter(Boolean))].sort(natural);
+
+  function refreshLoc() {
+    const opts = uniq('loc', () => true);
+    $('rLoc').innerHTML = '<option value="">All Locations</option>' + opts.map(o => `<option>${esc(o)}</option>`).join('');
+  }
+  function refreshDept() {
+    const loc = $('rLoc').value;
+    const opts = uniq('dept', d => !loc || d.loc === loc);
+    $('rDept').innerHTML = '<option value="">Select…</option>' + opts.map(o => `<option>${esc(o)}</option>`).join('');
+  }
+  function refreshBand() {
+    const loc = $('rLoc').value, dept = $('rDept').value;
+    const opts = uniq('band', d => (!loc || d.loc === loc) && (!dept || d.dept === dept));
+    $('rBand').innerHTML = '<option value="">Select…</option>' + opts.map(o => `<option>${esc(o)}</option>`).join('');
+  }
+  function refreshDesig() {
+    const loc = $('rLoc').value, dept = $('rDept').value, band = $('rBand').value;
+    const opts = uniq('desig', d => (!loc || d.loc === loc) && (!dept || d.dept === dept) && (!band || String(d.band) === band));
+    $('rDesig').innerHTML = '<option value="">Select…</option>' + opts.map(o => `<option>${esc(o)}</option>`).join('');
+  }
+
+  refreshLoc(); refreshDept(); refreshBand(); refreshDesig();
+  $('rLoc').onchange = () => { refreshDept(); refreshBand(); refreshDesig(); };
+  $('rDept').onchange = () => { refreshBand(); refreshDesig(); };
+  $('rBand').onchange = () => { refreshDesig(); };
+
+  $('rCalcBtn').onclick = () => {
+    const loc = $('rLoc').value, dept = $('rDept').value, band = $('rBand').value, desig = $('rDesig').value;
+    const m = $('rMetric').value, mLabel = label(METRICS, m);
+    const actual = parseFloat($('rSalary').value);
+    const out = $('recruiterResult');
+
+    if (!desig) { out.innerHTML = '<div class="status err">Please select at least a Designation.</div>'; return; }
+    if (!actual || actual <= 0) { out.innerHTML = '<div class="status err">Enter a valid proposed/actual salary.</div>'; return; }
+
+    const matches = state.data.filter(d =>
+      (!loc || d.loc === loc) && (!dept || d.dept === dept) && (!band || String(d.band) === band) && d.desig === desig);
+    const s = stats(matches, m);
+
+    if (!s.n) {
+      out.innerHTML = `<div class="status err">No ${esc(mLabel)} data found for this combination (${s.count} employee(s) matched, none with a valid value).</div>`;
+      return;
+    }
+
+    const mid = (s.min + s.max) / 2;
+    const compaRatio = mid ? (actual / mid) * 100 : null;
+    const rangePen = (s.max > s.min) ? ((actual - s.min) / (s.max - s.min)) * 100 : null;
+
+    const compaNote = compaRatio == null ? '—'
+      : compaRatio < 80 ? 'Below typical range — may risk attrition / hard to attract candidate'
+      : compaRatio < 90 ? 'Entry-level / newly promoted range'
+      : compaRatio <= 110 ? 'Standard range for a seasoned, solid performer'
+      : compaRatio <= 120 ? 'Top-tier / highly critical skillset range'
+      : 'Above typical range — review for overpay risk';
+    const penNote = rangePen == null ? '—'
+      : rangePen < 0 ? 'Below the band minimum'
+      : rangePen > 100 ? 'Above the band maximum — capped out'
+      : rangePen >= 95 ? 'Virtually no room left without a promotion / band adjustment'
+      : rangePen >= 50 ? 'Upper half of the range — solid room remains'
+      : 'Lower half of the range — plenty of room for growth';
+
+    const pct = v => v == null ? '—' : `${v.toFixed(1)}%`;
+    const badge = (v, lo, hi) => v == null ? '' : (v < lo ? 'style="color:var(--min)"' : v > hi ? 'style="color:var(--max)"' : 'style="color:var(--accent)"');
+
+    out.innerHTML = `
+      <div class="kpis" style="margin-bottom:12px;">
+        <div class="panel kpi"><div class="label">Band Min</div><div class="value">${fmt(s.min)}</div></div>
+        <div class="panel kpi"><div class="label">Band Midpoint</div><div class="value">${fmt(mid)}</div></div>
+        <div class="panel kpi"><div class="label">Band Max</div><div class="value">${fmt(s.max)}</div></div>
+        <div class="panel kpi"><div class="label">Sample Size</div><div class="value">${s.n}</div></div>
+      </div>
+      <div class="kpis">
+        <div class="panel kpi"><div class="label">Compa-Ratio</div><div class="value" ${badge(compaRatio, 90, 110)}>${pct(compaRatio)}</div><div class="who">${esc(compaNote)}</div></div>
+        <div class="panel kpi"><div class="label">Range Penetration</div><div class="value" ${badge(rangePen, 0, 100)}>${pct(rangePen)}</div><div class="who">${esc(penNote)}</div></div>
+      </div>
+      <div class="foot" style="padding:12px 0 0;">Based on ${s.n} employee(s) with valid ${esc(mLabel)} in ${esc(desig)}${dept ? ' · ' + esc(dept) : ''}${band ? ' · Band ' + esc(band) : ''}${loc ? ' · ' + esc(loc) : ' · All Locations'}.</div>`;
+  };
+}
+
+// ---- Drawer ----
+function openDrawer(title, s) {
+  const m = state.metric, mLabel = label(METRICS, m);
+  $('drawerTitle').textContent = title;
+  $('drawerSub').textContent = s.n ? `${s.count} employees · ${mLabel} ${fmt(s.min)} – ${fmt(s.max)} · average ${fmt(s.avg)}` : `${s.count} employees`;
+  const list = (s.rows || []).slice().reverse();
+  $('drawerBody').innerHTML = list.length ? `<table><thead><tr><th style="text-align:left">#</th><th>Sub Band</th><th>Tenure</th><th>${mLabel}</th></tr></thead><tbody>${
+    list.map((r, i) => `<tr style="cursor:default"><td>${i + 1}</td>
+      <td><div>${esc(r.sub || r.band)}${r === s.maxEmp ? '<span class="tag max">MAX</span>' : ''}${r === s.minEmp ? '<span class="tag min">MIN</span>' : ''}</div>
+      <div class="sub">${esc(r.desig)} · ${esc(r.dept)}</div></td>
+      <td>${esc(r.tenure)}</td><td title="${inrFull(r[m])}">${fmt(r[m])}</td></tr>`).join('')
+  }</tbody></table>` : '<div class="empty">No salary values in this group.</div>';
+  $('drawer').classList.add('open'); $('scrim').classList.add('open'); $('drawer').setAttribute('aria-hidden', 'false');
+}
+function closeDrawer() { $('drawer').classList.remove('open'); $('scrim').classList.remove('open'); $('drawer').setAttribute('aria-hidden', 'true'); }
+
+// ---- Sample data for previewing outside Google (no real employee data) ----
+function demoData() {
+  const desig = { 3: 'Engineer', 4: 'Senior Executive', 5: 'Assistant Manager', 6: 'Deputy Manager', 7: 'Manager', 8: 'Senior Manager', 9: 'General Manager', 10: 'Vice President', 11: 'Senior Vice President' };
+  const depts = ['Operations', 'MEP', 'Presales', 'HR & Admin', 'Legal', 'Finance', 'Digital Labs', 'Sustainability'];
+  const roles = ['Frontline', 'Team Leader', 'Project Head / Location Head', 'Cluster Head / Department Head'];
+  let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  const rows = [];
+  for (let i = 0; i < 400; i++) {
+    const b = 3 + Math.floor(Math.pow(rnd(), 1.8) * 9), sb = b + 'ABC'[Math.floor(rnd() * 3)];
+    const ctc = Math.round(220000 * Math.pow(1.42, b - 3) * (0.75 + rnd() * 0.6));
+    const doj = new Date(Date.now() - Math.pow(rnd(), 1.6) * 22 * 365.25 * 864e5).toISOString().slice(0, 10);
+    rows.push(['EIN ' + (4000 + i), 'Sample Employee ' + (i + 1), b, sb, desig[b], depts[Math.floor(rnd() * depts.length)],
+      roles[Math.min(3, Math.floor((b - 3) / 2.5))], 'Admin', 'BD & Operations', doj, '', '', rnd() < .7 ? 'Male' : 'Female',
+      Math.round(ctc / 12.5), 0, rnd() < .2 ? Math.round(ctc * .1) : 0, rnd() < .02 ? '' : ctc]);
+  }
+  return { headers: ['EMP ID', 'EMP NAME', 'Band', 'Sub Band', 'Designation', 'Department', 'Role', 'Salary Heads', 'Costing Heads', 'DOJ', 'DOB', 'Marital Status', 'Gender', 'Gross Monthly', 'Other Allowances\nMonthly', 'Annual Varaible Pay ', 'Annual CTC'],
+    rows, fetchedAt: new Date().toISOString() };
+}
+
+// View only: block copy, right-click, drag, print and save shortcuts
+['copy', 'cut', 'contextmenu', 'dragstart'].forEach(ev => document.addEventListener(ev, e => { if (e.target.tagName !== 'INPUT') e.preventDefault(); }));
+document.addEventListener('keydown', e => { if ((e.ctrlKey || e.metaKey) && ['p', 's'].includes(e.key.toLowerCase())) e.preventDefault(); });
+
+load();
+</script>
+</body>
+</html>
