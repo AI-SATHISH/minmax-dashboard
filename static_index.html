@@ -661,7 +661,7 @@ function initRecruiterTool() {
         : changePct < 0 ? 'Decrease vs. the replaced employee'
         : 'No change vs. the replaced employee';
       replacementBlock = `
-        <div class="foot" style="padding:4px 0 8px;font-weight:600;">Replacement comparison — EMP ID ${esc(empId)} (${esc(replacedEmp.designation || '—')} · ${esc(replacedEmp.department || '—')} · Sub Band ${esc(replacedEmp.subBand || replacedEmp.band || '—')} · found in "${esc(replacedEmp.sheet || 'Active')}" sheet)</div>
+        <div class="foot" style="padding:4px 0 8px;font-weight:600;">Replacement comparison — EMP ID ${esc(empId)} (${esc(replacedEmp.designation || '—')} · ${esc(replacedEmp.department || '—')} · Sub Band ${esc(replacedEmp.subBand || replacedEmp.band || '—')})</div>
         <div class="kpis" style="margin-bottom:12px;">
           <div class="panel kpi"><div class="label">Replaced Employee's ${esc(mLabel)}</div><div class="value">${fmt(oldVal)}</div></div>
           <div class="panel kpi"><div class="label">New / Proposed ${esc(mLabel)}</div><div class="value">${fmt(actual)}</div></div>
