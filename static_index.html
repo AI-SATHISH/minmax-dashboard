@@ -52,15 +52,21 @@
   .phead { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; padding: 14px 16px 10px; min-height: 94px; box-sizing: border-box; }
   .tablewrap { overflow: auto; max-height: 460px; height: 460px; border-top: 1px solid var(--border); }
   table { width: 100%; table-layout: fixed; border-collapse: collapse; font-variant-numeric: tabular-nums; }
-  th:nth-child(1), td:nth-child(1) { width: 37%; }
-  th:nth-child(2), td:nth-child(2) { width: 6.5%; }
-  th:nth-child(3), td:nth-child(3), th:nth-child(4), td:nth-child(4), th:nth-child(5), td:nth-child(5), th:nth-child(6), td:nth-child(6) { width: 9%; }
-  th:nth-child(7), td:nth-child(7) { width: 9.5%; }
-  th:nth-child(8), td:nth-child(8) { width: 9.5%; }
+  th:nth-child(1), td:nth-child(1) { width: 20.5%; }
+  th:nth-child(2), td:nth-child(2) { width: 7.5%; }
+  th:nth-child(3), td:nth-child(3), th:nth-child(4), td:nth-child(4), th:nth-child(5), td:nth-child(5), th:nth-child(6), td:nth-child(6) { width: 12.5%; }
+  th:nth-child(7), td:nth-child(7) { width: 11%; }
+  th:nth-child(8), td:nth-child(8) { width: 11%; }
   #chart th:nth-child(1), #chart td:nth-child(1) { width: 45%; }
   #chart th:nth-child(2), #chart td:nth-child(2) { width: 25%; }
   #chart th:nth-child(3), #chart td:nth-child(3) { width: 30%; }
-  th, td { padding: 6px 8px; text-align: right; border-bottom: 1px solid var(--border); white-space: nowrap; font-size: 13px; }
+  .drawer-table th:nth-child(1), .drawer-table td:nth-child(1) { width: 6%; }
+  .drawer-table th:nth-child(2), .drawer-table td:nth-child(2) { width: 42%; }
+  .drawer-table th:nth-child(3), .drawer-table td:nth-child(3) { width: 22%; }
+  .drawer-table th:nth-child(4), .drawer-table td:nth-child(4) { width: 30%; }
+  .drawer-table td { white-space: normal; vertical-align: top; }
+  .drawer-table td:first-child, .drawer-table td:last-child { white-space: nowrap; }
+  th, td { padding: 6px 6px; text-align: right; border-bottom: 1px solid var(--border); white-space: nowrap; font-size: 12.5px; overflow: hidden; }
   thead th { white-space: normal; word-break: break-word; line-height: 1.2; vertical-align: bottom; }
   tbody td:first-child, tfoot td:first-child { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   th:first-child, td:first-child { text-align: left; }
@@ -69,7 +75,7 @@
   tbody tr { cursor: pointer; } tbody tr:hover { background: var(--surface-2); }
   td:first-child { font-weight: 600; }
   tfoot { box-shadow: 0 -8px 0 var(--surface); }
-  tfoot td { position: sticky; bottom: 0; background: var(--head); font-weight: 700; font-size: 15px; border-bottom: 0; padding-top: 12px; }
+  tfoot td { position: sticky; bottom: 0; background: var(--head); font-weight: 700; font-size: 13px; border-bottom: 0; padding-top: 12px; overflow: hidden; }
   td.min { color: var(--min); font-weight: 600; } td.max { color: var(--max); font-weight: 600; }
   td.rangecell { min-width: 140px; width: 22%; }
   .range { position: relative; height: 14px; }
@@ -633,11 +639,11 @@ function openDrawer(title, s) {
   $('drawerTitle').textContent = title;
   $('drawerSub').textContent = s.n ? `${s.count} employees · ${mLabel} ${fmt(s.min)} – ${fmt(s.max)} · average ${fmt(s.avg)}` : `${s.count} employees`;
   const list = (s.rows || []).slice().reverse();
-  $('drawerBody').innerHTML = list.length ? `<table><thead><tr><th style="text-align:left">#</th><th>Sub Band</th><th>Tenure</th><th>${mLabel}</th></tr></thead><tbody>${
-    list.map((r, i) => `<tr style="cursor:default"><td>${i + 1}</td>
-      <td><div>${esc(r.sub || r.band)}${r === s.maxEmp ? '<span class="tag max">MAX</span>' : ''}${r === s.minEmp ? '<span class="tag min">MIN</span>' : ''}</div>
+  $('drawerBody').innerHTML = list.length ? `<table class="drawer-table"><thead><tr><th style="text-align:left">#</th><th style="text-align:left">Sub Band</th><th style="text-align:left">Tenure</th><th style="text-align:right">${mLabel}</th></tr></thead><tbody>${
+    list.map((r, i) => `<tr style="cursor:default"><td style="text-align:left">${i + 1}</td>
+      <td style="text-align:left"><div>${esc(r.sub || r.band)}${r === s.maxEmp ? '<span class="tag max">MAX</span>' : ''}${r === s.minEmp ? '<span class="tag min">MIN</span>' : ''}</div>
       <div class="sub">${esc(r.desig)} · ${esc(r.dept)}</div></td>
-      <td>${esc(r.tenure)}</td><td title="${inrFull(r[m])}">${fmt(r[m])}</td></tr>`).join('')
+      <td style="text-align:left">${esc(r.tenure)}</td><td style="text-align:right" title="${inrFull(r[m])}">${fmt(r[m])}</td></tr>`).join('')
   }</tbody></table>` : '<div class="empty">No salary values in this group.</div>';
   $('drawer').classList.add('open'); $('scrim').classList.add('open'); $('drawer').setAttribute('aria-hidden', 'false');
 }
