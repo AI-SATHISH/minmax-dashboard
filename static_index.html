@@ -229,11 +229,10 @@ const FILTERS = [
 const HIDDEN_LOCATIONS = ['gcc'];
 // Top-to-bottom order matches the chart (longest tenure first).
 const BUCKETS = (() => {
-  // 0-6y in 2-year steps, then 3-year steps up to 48y, plus a final catch-all.
-  const b = [[0, 2], [2, 4], [4, 6]];
-  for (let s = 6; s < 48; s += 3) b.push([s, s + 3]);
+  // 0-6y in 2-year steps, 6-15y in 3-year steps, then 15-20y, then a final catch-all.
+  const b = [[0, 2], [2, 4], [4, 6], [6, 9], [9, 12], [12, 15], [15, 20]];
   const list = b.map(([lo, hi]) => [`${lo} - ${hi}y`, lo, hi]);
-  list.push(['48y Above', 48, Infinity]);
+  list.push(['20y Above', 20, Infinity]);
   return list.reverse(); // largest first, to match existing lookup/filter order
 })();
 
