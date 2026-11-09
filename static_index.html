@@ -503,7 +503,7 @@ function renderTable(rows, all) {
   });
 
   const excluded = rows.length - all.n;
-  $('foot').textContent = `${state.summary.length} groups · Min/Max ignore blank or zero values` + (excluded ? ` (${excluded} excluded)` : '') + " · Comp Ratio = Average ÷ Midpoint · Salary Penetration = Average's position between Min and Max · Click a row to see employees";
+  $('foot').textContent = '';
 }
 
 function renderChart(rows) {
@@ -515,9 +515,7 @@ function renderChart(rows) {
     return { b, s, count: s.count, avgAnnual };
   });
   const noTenure = rows.filter(r => !r.tenure).length;
-  $('chartFoot').textContent = (state.tenureSource === 'DOJ' ? 'Tenure = years since Date of Joining (as of today)'
-    : state.tenureSource ? `Tenure from "${state.tenureSource}" column` : 'No DOJ or experience column found')
-    + (noTenure ? ` · ${noTenure} without a tenure value` : '') + ` · Average Annual = Average ${mLabel} × 12 · Click a row to see employees`;
+  $('chartFoot').textContent = '';
 
   $('chart').innerHTML = `<table><thead><tr>
       <th style="text-align:left">Experience</th><th>EMP Count</th><th>Average</th>
