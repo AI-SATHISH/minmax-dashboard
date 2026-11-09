@@ -228,10 +228,11 @@ def api_role():
     })
 
 
-def _fetch_sheet_rows():
-    """Fetch the header row and every data row from the Zoho Sheet.
-    Returns (col_to_header, row_details) — the raw building blocks shared by
-    /api/data and /api/lookup-emp."""
+def _fetch_sheet_rows(sheet_name=None):
+    """Fetch the header row and every data row from one worksheet in the Zoho
+    workbook. Returns (col_to_header, row_details) — the raw building blocks
+    shared by /api/data and /api/lookup-emp."""
+    sheet_name = sheet_name or ZOHO_SHEET_NAME
     token = get_access_token()
 
     # Step 1: read the header row to map column index -> header name.
@@ -244,7 +245,7 @@ def _fetch_sheet_rows():
         headers={"Authorization": f"Zoho-oauthtoken {token}"},
         params={
             "method": "worksheet.content.get",
-            "worksheet_name": ZOHO_SHEET_NAME,
+            "worksheet_name": sheet_name,
             "start_row": 1, "end_row": 1,
             "start_column": 1, "end_column": 60,
         },
@@ -263,7 +264,7 @@ def _fetch_sheet_rows():
         headers={"Authorization": f"Zoho-oauthtoken {token}"},
         params={
             "method": "worksheet.content.get",
-            "worksheet_name": ZOHO_SHEET_NAME,
+            "worksheet_name": sheet_name,
             "start_row": 2, "end_row": used_row,
             "start_column": 1, "end_column": used_column,
         },
@@ -273,6 +274,12 @@ def _fetch_sheet_rows():
     body_data = body_resp.json()
     row_details = body_data.get("range_details", [])
     return col_to_header, row_details
+
+
+# EMP ID lookups for the "Replacement" flow search these 3 worksheets, in
+# order — a departing employee being replaced often sits in Attrition rather
+# than Active. "Summary" is a pivot/dashboard sheet, not raw employee rows.
+LOOKUP_SHEETS = [ZOHO_SHEET_NAME, "Attrition", "Entire Attrition"]
 
 
 def _col_idx(col_to_header, *names):
@@ -361,51 +368,59 @@ def api_data():
 @login_required
 def api_lookup_emp():
     """Look up ONE employee by EMP ID for the Recruiter "Replacement" flow.
-    Returns only salary/band/designation fields needed for comparison — never
-    the employee's name. Subject to the same role-based visibility rules as
-    /api/data, so a restricted/location/team login can't use this to peek at
-    an employee outside their normal scope."""
+    Searches Active, then Attrition, then Entire Attrition — the person being
+    replaced has often already left, so Active alone isn't enough. Returns
+    only salary/band/designation fields needed for comparison — never the
+    employee's name. Subject to the same role-based visibility rules as
+    /api/data (checked against whichever sheet the match came from), so a
+    restricted/location/team login can't use this to peek at an employee
+    outside their normal scope."""
     emp_id = (request.args.get("id") or "").strip()
     if not emp_id:
         return jsonify({"found": False, "error": "missing id"}), 400
 
-    col_to_header, row_details = _fetch_sheet_rows()
-    if not row_details:
-        return jsonify({"found": False})
-
-    empid_col_idx = _col_idx(col_to_header, "emp id")
-    if empid_col_idx is None:
-        return jsonify({"found": False, "error": "no EMP ID column in sheet"})
-
-    sub_band_col_idx = _col_idx(col_to_header, "sub band")
-    band_col_idx = _col_idx(col_to_header, "band")
-    location_col_idx = _col_idx(col_to_header, "location")
-    costhead_col_idx = _col_idx(col_to_header, "costing heads")
-    desig_col_idx = _col_idx(col_to_header, "designation")
-    dept_col_idx = _col_idx(col_to_header, "department")
-    gross_col_idx = _col_idx(col_to_header, "gross monthly")
-    ctc_col_idx = _col_idx(col_to_header, "annual ctc")
-    vp_col_idx = _col_idx(col_to_header, "annual varaible pay", "annual variable pay")
-
     wanted = norm(emp_id)
-    for rd in row_details:
-        cells = {c["column_index"]: c.get("content", "") for c in rd.get("row_details", [])}
-        if norm(cells.get(empid_col_idx, "")) != wanted:
+
+    for sheet_name in LOOKUP_SHEETS:
+        col_to_header, row_details = _fetch_sheet_rows(sheet_name)
+        if not row_details:
             continue
 
-        if not _row_visible(cells, sub_band_col_idx, band_col_idx, location_col_idx, costhead_col_idx):
-            return jsonify({"found": False})
+        empid_col_idx = _col_idx(col_to_header, "emp id")
+        if empid_col_idx is None:
+            continue
 
-        return jsonify({
-            "found": True,
-            "designation": cells.get(desig_col_idx, ""),
-            "department": cells.get(dept_col_idx, ""),
-            "band": cells.get(band_col_idx, ""),
-            "subBand": cells.get(sub_band_col_idx, ""),
-            "gross": _parse_number(cells.get(gross_col_idx)),
-            "ctc": _parse_number(cells.get(ctc_col_idx)),
-            "vp": _parse_number(cells.get(vp_col_idx)),
-        })
+        sub_band_col_idx = _col_idx(col_to_header, "sub band")
+        band_col_idx = _col_idx(col_to_header, "band")
+        location_col_idx = _col_idx(col_to_header, "location")
+        costhead_col_idx = _col_idx(col_to_header, "costing heads")
+        desig_col_idx = _col_idx(col_to_header, "designation")
+        dept_col_idx = _col_idx(col_to_header, "department")
+        # Active uses "Gross Monthly" / "Annual Varaible Pay"; the Attrition
+        # sheets use shorter names ("Gross" / "Variable Pay") for the same data.
+        gross_col_idx = _col_idx(col_to_header, "gross monthly", "gross")
+        ctc_col_idx = _col_idx(col_to_header, "annual ctc")
+        vp_col_idx = _col_idx(col_to_header, "annual varaible pay", "annual variable pay", "variable pay")
+
+        for rd in row_details:
+            cells = {c["column_index"]: c.get("content", "") for c in rd.get("row_details", [])}
+            if norm(cells.get(empid_col_idx, "")) != wanted:
+                continue
+
+            if not _row_visible(cells, sub_band_col_idx, band_col_idx, location_col_idx, costhead_col_idx):
+                return jsonify({"found": False})
+
+            return jsonify({
+                "found": True,
+                "sheet": sheet_name,
+                "designation": cells.get(desig_col_idx, ""),
+                "department": cells.get(dept_col_idx, ""),
+                "band": cells.get(band_col_idx, ""),
+                "subBand": cells.get(sub_band_col_idx, ""),
+                "gross": _parse_number(cells.get(gross_col_idx)),
+                "ctc": _parse_number(cells.get(ctc_col_idx)),
+                "vp": _parse_number(cells.get(vp_col_idx)),
+            })
 
     return jsonify({"found": False})
 
