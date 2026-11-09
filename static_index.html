@@ -46,20 +46,20 @@
   .seg { display: inline-flex; background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; padding: 2px; }
   .seg button { border: 0; background: transparent; padding: 5px 10px; border-radius: 6px; cursor: pointer; color: var(--muted); }
   .seg button.on { background: var(--surface); color: var(--text); box-shadow: var(--shadow); font-weight: 600; }
-  .grid2 { display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: stretch; }
+  .grid2 { display: grid; gap: 14px; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); align-items: stretch; }
   .grid2 > .panel { display: flex; flex-direction: column; }
   @media (max-width: 1100px) { .grid2 { grid-template-columns: 1fr; } }
   .phead { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; padding: 14px 16px 10px; min-height: 94px; box-sizing: border-box; }
   .tablewrap { overflow: auto; max-height: 460px; height: 460px; border-top: 1px solid var(--border); }
   table { width: 100%; table-layout: fixed; border-collapse: collapse; font-variant-numeric: tabular-nums; }
-  th:nth-child(1), td:nth-child(1) { width: 20.5%; }
+  th:nth-child(1), td:nth-child(1) { width: 26%; }
   th:nth-child(2), td:nth-child(2) { width: 7.5%; }
-  th:nth-child(3), td:nth-child(3), th:nth-child(4), td:nth-child(4), th:nth-child(5), td:nth-child(5), th:nth-child(6), td:nth-child(6) { width: 12.5%; }
+  th:nth-child(3), td:nth-child(3), th:nth-child(4), td:nth-child(4), th:nth-child(5), td:nth-child(5), th:nth-child(6), td:nth-child(6) { width: 11%; }
   th:nth-child(7), td:nth-child(7) { width: 11%; }
-  th:nth-child(8), td:nth-child(8) { width: 11%; }
-  #chart th:nth-child(1), #chart td:nth-child(1) { width: 45%; }
-  #chart th:nth-child(2), #chart td:nth-child(2) { width: 25%; }
-  #chart th:nth-child(3), #chart td:nth-child(3) { width: 30%; }
+  th:nth-child(8), td:nth-child(8) { width: 11.5%; }
+  #chart th:nth-child(1), #chart td:nth-child(1) { width: 36%; }
+  #chart th:nth-child(2), #chart td:nth-child(2) { width: 28%; }
+  #chart th:nth-child(3), #chart td:nth-child(3) { width: 36%; }
   .drawer-table th:nth-child(1), .drawer-table td:nth-child(1) { width: 6%; }
   .drawer-table th:nth-child(2), .drawer-table td:nth-child(2) { width: 42%; }
   .drawer-table th:nth-child(3), .drawer-table td:nth-child(3) { width: 22%; }
