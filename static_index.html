@@ -46,21 +46,25 @@
   .seg { display: inline-flex; background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; padding: 2px; }
   .seg button { border: 0; background: transparent; padding: 5px 10px; border-radius: 6px; cursor: pointer; color: var(--muted); }
   .seg button.on { background: var(--surface); color: var(--text); box-shadow: var(--shadow); font-weight: 600; }
-  .grid2 { display: grid; gap: 14px; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); align-items: stretch; }
+  .grid2 { display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: stretch; }
   .grid2 > .panel { display: flex; flex-direction: column; }
   @media (max-width: 1100px) { .grid2 { grid-template-columns: 1fr; } }
   .phead { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; padding: 14px 16px 10px; min-height: 94px; box-sizing: border-box; }
   .tablewrap { overflow: auto; max-height: 460px; height: 460px; border-top: 1px solid var(--border); }
   table { width: 100%; table-layout: fixed; border-collapse: collapse; font-variant-numeric: tabular-nums; }
-  th:nth-child(1), td:nth-child(1) { width: 20%; }
-  th:nth-child(2), td:nth-child(2) { width: 7%; }
+  th:nth-child(1), td:nth-child(1) { width: 17%; }
+  th:nth-child(2), td:nth-child(2) { width: 9%; }
   th:nth-child(3), td:nth-child(3), th:nth-child(4), td:nth-child(4), th:nth-child(5), td:nth-child(5), th:nth-child(6), td:nth-child(6) { width: 11%; }
-  th:nth-child(7), td:nth-child(7), th:nth-child(8), td:nth-child(8) { width: 11.5%; }
+  th:nth-child(7), td:nth-child(7) { width: 13%; }
+  th:nth-child(8), td:nth-child(8) { width: 17%; }
+  #chart th:nth-child(1), #chart td:nth-child(1) { width: 45%; }
+  #chart th:nth-child(2), #chart td:nth-child(2) { width: 25%; }
+  #chart th:nth-child(3), #chart td:nth-child(3) { width: 30%; }
   th, td { padding: 6px 8px; text-align: right; border-bottom: 1px solid var(--border); white-space: nowrap; font-size: 13px; }
   thead th { white-space: normal; word-break: break-word; line-height: 1.2; vertical-align: bottom; }
   tbody td:first-child, tfoot td:first-child { white-space: normal; word-break: break-word; max-width: 160px; }
   th:first-child, td:first-child { text-align: left; }
-  thead th { font-size: 12px; color: var(--text); font-weight: 700; cursor: pointer; user-select: none; position: sticky; top: 0; background: var(--head); z-index: 1; text-transform: uppercase; letter-spacing: .02em; }
+  thead th { font-size: 10.5px; color: var(--text); font-weight: 700; cursor: pointer; user-select: none; position: sticky; top: 0; background: var(--head); z-index: 1; text-transform: uppercase; letter-spacing: .01em; padding-left: 4px; padding-right: 4px; }
   th.sorted::after { content: " ▾"; } th.sorted.asc::after { content: " ▴"; }
   tbody tr { cursor: pointer; } tbody tr:hover { background: var(--surface-2); }
   td:first-child { font-weight: 600; }
@@ -167,7 +171,7 @@
       <div class="phead">
         <h2>Average Annual Gross Salary by Total Experience</h2>
       </div>
-      <div class="chartbody" id="chart" style="height:auto; padding:0;"></div>
+      <div class="tablewrap" id="chart"></div>
       <div class="foot" id="chartFoot"></div>
     </section>
   </div>
@@ -470,7 +474,7 @@ function renderTable(rows, all) {
     return `<td style="${color ? `color:${color};font-weight:600` : ''}">${pct(v)}</td>`;
   };
 
-  $('tableArea').innerHTML = `<table><thead><tr>${cols.map(([k, l]) => `<th data-k="${k}" class="${k === sk ? 'sorted' + (asc ? ' asc' : '') : ''}">${l}</th>`).join('')}<th style="cursor:default" title="Average ÷ Band Midpoint">Comp Ratio</th><th style="cursor:default" title="Where Average sits between Min and Max">Salary Penetration</th></tr></thead><tbody>${
+  $('tableArea').innerHTML = `<table><thead><tr>${cols.map(([k, l]) => `<th data-k="${k}" class="${k === sk ? 'sorted' + (asc ? ' asc' : '') : ''}">${l}</th>`).join('')}<th style="cursor:default" title="Average ÷ Band Midpoint">Comp Ratio</th><th style="cursor:default" title="Where Average sits between Min and Max">Penetration</th></tr></thead><tbody>${
     state.summary.map((s, i) => {
       const mid = (s.min != null && s.max != null) ? (s.min + s.max) / 2 : null;
       const compaRatio = (mid && s.avg != null) ? (s.avg / mid) * 100 : null;
