@@ -34,7 +34,7 @@
   .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; box-shadow: var(--shadow); }
   .filters { padding: 14px; display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); margin-bottom: 14px; }
   .filters label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); }
-  select, input[type=search] { background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; padding: 7px 9px; min-width: 0; }
+  select, input[type=search], input[type=text], input[type=number] { background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; padding: 7px 9px; min-width: 0; font-size: inherit; font-family: inherit; width: 100%; box-sizing: border-box; }
   .filters .actions { display: flex; align-items: flex-end; gap: 8px; }
   .kpis { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); margin-bottom: 14px; }
   .kpi { padding: 14px 16px; }
@@ -189,7 +189,7 @@
     </div>
     <div style="padding:16px;">
       <div class="filters" style="margin-bottom:0;" id="recruiterForm">
-        <label id="rEmpIdWrap" style="display:none">Replacing EMP ID<input type="text" id="rEmpId" placeholder="e.g. 5032"></label>
+        <label id="rEmpIdWrap" style="display:none">Replacing EMP ID<input type="text" id="rEmpId" placeholder="e.g. EIN 5286"></label>
         <label>Location<select id="rLoc"><option value="">All Locations</option></select></label>
         <label>Department<select id="rDept"><option value="">Select…</option></select></label>
         <label>Band<select id="rBand"><option value="">Select…</option></select></label>
