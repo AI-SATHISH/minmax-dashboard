@@ -648,7 +648,7 @@ function renderDensity(rows) {
     const selected = state.chartFilterGroup === s.group;
     rowsSvg += `<g class="density-row" data-group="${esc(s.group)}" style="cursor:pointer;">
       <text x="${LABEL_W - 10}" y="${rowY + barH / 2}" dy="0.35em" text-anchor="end" font-size="13" font-weight="600" fill="var(--text)">${esc(s.group)}</text>
-      <rect x="${x0.toFixed(1)}" y="${rowY}" width="${(x100 - x0).toFixed(1)}" height="${barH}" fill="var(--surface)" rx="3" ${selected ? 'stroke="var(--accent)" stroke-width="2"' : ''}/>
+      <rect x="${x0.toFixed(1)}" y="${rowY}" width="${(x100 - x0).toFixed(1)}" height="${barH}" fill="var(--surface)" ${selected ? 'stroke="var(--accent)" stroke-width="2"' : ''}/>
       <g transform="translate(0, ${rowY + barH / 2})">
         ${seg(x0, xBelow - x0, COL_BELOW, s.belowPct, s.below, 'below')}
         ${seg(xBelow, xWithin - xBelow, COL_WITHIN, s.withinPct, s.within, 'within')}
@@ -675,15 +675,24 @@ function renderDensity(rows) {
     </svg>`;
 
   $('densityTable').querySelectorAll('.density-row').forEach(gEl => {
+    const grp = gEl.dataset.group;
     gEl.onclick = () => {
-      const grp = gEl.dataset.group;
       state.chartFilterGroup = (state.chartFilterGroup === grp) ? null : grp;
       render();
+    };
+    gEl.ondblclick = () => {
+      const s = summary.find(x => x.group === grp);
+      if (s) openDrawer(grp, stats([...s.belowRows, ...s.withinRows, ...s.aboveRows], m));
     };
   });
 
   $('densityTable').querySelectorAll('.density-seg').forEach(segEl => {
     segEl.onclick = (e) => {
+      e.stopPropagation();
+      const rowEl = segEl.closest('.density-row');
+      rowEl.onclick();
+    };
+    segEl.ondblclick = (e) => {
       e.stopPropagation();
       const rowEl = segEl.closest('.density-row');
       const grp = rowEl.dataset.group;
