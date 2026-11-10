@@ -46,9 +46,8 @@
   .seg { display: inline-flex; background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; padding: 2px; }
   .seg button { border: 0; background: transparent; padding: 5px 10px; border-radius: 6px; cursor: pointer; color: var(--muted); }
   .seg button.on { background: var(--surface); color: var(--text); box-shadow: var(--shadow); font-weight: 600; }
-  .grid2 { display: grid; gap: 14px; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); align-items: stretch; }
+  .grid2 { display: grid; gap: 14px; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); align-items: start; }
   .grid2 > .panel { display: flex; flex-direction: column; }
-  .grid2 > .panel .tablewrap { flex: 1 1 auto; height: auto; max-height: none; }
   @media (max-width: 1100px) { .grid2 { grid-template-columns: 1fr; } }
   .grid3 { display: grid; gap: 14px; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: stretch; }
   .grid3 > .panel { display: flex; flex-direction: column; }
@@ -490,6 +489,25 @@ function render() {
   const chartRows = (state.chartFilterGroup != null) ? rows.filter(r => (r[g] || '(blank)') === state.chartFilterGroup) : rows;
   renderChart(chartRows);
   renderDensity(rows);
+  syncLeftTableHeight();
+}
+
+// Make the Gross Monthly table's box match the combined height of the
+// EXP Tenure + Salary Density column — measured directly (not via CSS
+// flex/grid stretching, which caused a runaway feedback loop growing the
+// box to 2500px+). Stops exactly at the bottom of Salary Density.
+function syncLeftTableHeight() {
+  const leftPanel = document.getElementById('tableArea').closest('.panel');
+  const stackCol = leftPanel.parentElement.querySelector('.stack-col');
+  const wrap = document.getElementById('tableArea');
+  if (!leftPanel || !stackCol || !wrap) return;
+  requestAnimationFrame(() => {
+    const targetH = stackCol.getBoundingClientRect().height;
+    const used = leftPanel.getBoundingClientRect().height - wrap.getBoundingClientRect().height;
+    const newWrapH = Math.max(200, targetH - used);
+    wrap.style.height = newWrapH + 'px';
+    wrap.style.maxHeight = newWrapH + 'px';
+  });
 }
 
 function renderTable(rows, all) {
@@ -917,6 +935,7 @@ function demoData() {
 ['copy', 'cut', 'contextmenu', 'dragstart'].forEach(ev => document.addEventListener(ev, e => { if (e.target.tagName !== 'INPUT') e.preventDefault(); }));
 document.addEventListener('keydown', e => { if ((e.ctrlKey || e.metaKey) && ['p', 's'].includes(e.key.toLowerCase())) e.preventDefault(); });
 
+window.addEventListener('resize', () => { if (state.data.length) syncLeftTableHeight(); });
 load();
 </script>
 </body>
