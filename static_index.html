@@ -600,18 +600,18 @@ function renderDensity(rows) {
   for (const r of rows) { const k = r[g] || '(blank)'; if (!buckets.has(k)) buckets.set(k, []); buckets.get(k).push(r); }
 
   let summary = [...buckets].map(([group, rs]) => {
-    const vals = rs.map(r => r[m]).filter(v => v != null && v > 0);
-    const n = vals.length;
+    const valid = rs.filter(r => r[m] != null && r[m] > 0);
+    const n = valid.length;
     if (!n) return null;
-    const avg = vals.reduce((a, b) => a + b, 0) / n;
+    const avg = valid.reduce((a, r) => a + r[m], 0) / n;
     const lo = avg * 0.9, hi = avg * 1.1;
-    const below = vals.filter(v => v < lo).length;
-    const above = vals.filter(v => v > hi).length;
-    const within = n - below - above;
+    const belowRows = valid.filter(r => r[m] < lo);
+    const aboveRows = valid.filter(r => r[m] > hi);
+    const withinRows = valid.filter(r => r[m] >= lo && r[m] <= hi);
     return {
-      group, n, avg,
-      belowPct: (below / n) * 100, withinPct: (within / n) * 100, abovePct: (above / n) * 100,
-      below, within, above,
+      group, n, avg, belowRows, withinRows, aboveRows,
+      belowPct: (belowRows.length / n) * 100, withinPct: (withinRows.length / n) * 100, abovePct: (aboveRows.length / n) * 100,
+      below: belowRows.length, within: withinRows.length, above: aboveRows.length,
     };
   }).filter(Boolean);
 
@@ -632,12 +632,12 @@ function renderDensity(rows) {
   const x = pct => LABEL_W + (pct / 100) * plotW;
 
   const COL_BELOW = '#3b82f6', COL_WITHIN = '#10b981', COL_ABOVE = '#f97316';
-  const seg = (x1, w, color, pct, count) => {
+  const seg = (x1, w, color, pct, count, segKey) => {
     if (w <= 0) return '';
     const full = `${pct.toFixed(0)}% (${count})`;
     const label = pct >= 14 ? full : pct >= 6 ? `${pct.toFixed(0)}%` : '';
     const text = label ? `<text x="${(x1 + w / 2).toFixed(1)}" y="0" dy="0.35em" text-anchor="middle" font-size="12" font-weight="700" fill="#000">${label}</text>` : '';
-    return `<rect x="${x1.toFixed(1)}" width="${w.toFixed(1)}" height="${barH}" fill="${color}"/>${text}`;
+    return `<g class="density-seg" data-seg="${segKey}" style="cursor:pointer;"><rect x="${x1.toFixed(1)}" y="${-barH / 2}" width="${w.toFixed(1)}" height="${barH}" fill="${color}"/>${text}</g>`;
   };
 
   let rowsSvg = '';
@@ -650,9 +650,9 @@ function renderDensity(rows) {
       <text x="${LABEL_W - 10}" y="${rowY + barH / 2}" dy="0.35em" text-anchor="end" font-size="13" font-weight="600" fill="var(--text)">${esc(s.group)}</text>
       <rect x="${x0.toFixed(1)}" y="${rowY}" width="${(x100 - x0).toFixed(1)}" height="${barH}" fill="var(--surface)" rx="3" ${selected ? 'stroke="var(--accent)" stroke-width="2"' : ''}/>
       <g transform="translate(0, ${rowY + barH / 2})">
-        ${seg(x0, xBelow - x0, COL_BELOW, s.belowPct, s.below)}
-        ${seg(xBelow, xWithin - xBelow, COL_WITHIN, s.withinPct, s.within)}
-        ${seg(xWithin, x100 - xWithin, COL_ABOVE, s.abovePct, s.above)}
+        ${seg(x0, xBelow - x0, COL_BELOW, s.belowPct, s.below, 'below')}
+        ${seg(xBelow, xWithin - xBelow, COL_WITHIN, s.withinPct, s.within, 'within')}
+        ${seg(xWithin, x100 - xWithin, COL_ABOVE, s.abovePct, s.above, 'above')}
       </g>
     </g>`;
   });
@@ -679,6 +679,20 @@ function renderDensity(rows) {
       const grp = gEl.dataset.group;
       state.chartFilterGroup = (state.chartFilterGroup === grp) ? null : grp;
       render();
+    };
+  });
+
+  $('densityTable').querySelectorAll('.density-seg').forEach(segEl => {
+    segEl.onclick = (e) => {
+      e.stopPropagation();
+      const rowEl = segEl.closest('.density-row');
+      const grp = rowEl.dataset.group;
+      const s = summary.find(x => x.group === grp);
+      if (!s) return;
+      const segKey = segEl.dataset.seg;
+      const segRows = segKey === 'below' ? s.belowRows : segKey === 'above' ? s.aboveRows : s.withinRows;
+      const segLabel = segKey === 'below' ? 'Below avg −10%' : segKey === 'above' ? 'Above avg +10%' : 'Within ±10%';
+      openDrawer(`${grp} — ${segLabel}`, stats(segRows, m));
     };
   });
 }
