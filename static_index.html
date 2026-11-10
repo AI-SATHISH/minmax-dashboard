@@ -574,7 +574,7 @@ function renderTable(rows, all) {
   });
 
   const excluded = rows.length - all.n;
-  $('foot').textContent = '';
+  $('foot').innerHTML = `Colour code: <span style="color:var(--min);font-weight:600">green</span> = below 90% (underpaid) · <span style="font-weight:600">pink</span> = 90–110% (normal range) · <span style="color:var(--max);font-weight:600">orange</span> = above 110% (overpaid) — applies to Comp Ratio.`;
 }
 
 function renderChart(rows) {
