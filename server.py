@@ -438,6 +438,7 @@ def api_lookup_emp():
                 "department": cells.get(dept_col_idx, ""),
                 "band": cells.get(band_col_idx, ""),
                 "subBand": cells.get(sub_band_col_idx, ""),
+                "location": cells.get(location_col_idx, ""),
                 "gross": _parse_number(cells.get(gross_col_idx)),
                 "ctc": _parse_number(cells.get(ctc_col_idx)),
                 "vp": _parse_number(cells.get(vp_col_idx)),

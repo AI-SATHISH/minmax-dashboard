@@ -225,7 +225,7 @@
         <label>Band<select id="rBand"><option value="">Select…</option></select></label>
         <label>Designation<select id="rDesig"><option value="">Select…</option></select></label>
         <label>Salary metric<select id="rMetric"></select></label>
-        <label>Proposed / Actual Salary<input type="number" id="rSalary" placeholder="e.g. 65000"></label>
+        <label id="rSalaryLabel"><span id="rSalaryLabelText">Proposed / Actual Salary</span><input type="number" id="rSalary" placeholder="e.g. 65000"></label>
         <div class="actions"><button class="btn primary" id="rCalcBtn">Calculate</button></div>
       </div>
       <div id="recruiterResult" style="margin-top:16px;"></div>
@@ -760,7 +760,26 @@ function initRecruiterTool() {
     state.hireType = t;
     [...$('hireTypeSeg').children].forEach(b => b.classList.toggle('on', b.dataset.t === t));
     $('rEmpIdWrap').style.display = t === 'replacement' ? '' : 'none';
+    $('rSalaryLabelText').textContent = t === 'replacement' ? 'Proposed / Actual Salary (optional — defaults to current pay)' : 'Proposed / Actual Salary';
     $('recruiterResult').innerHTML = '';
+  };
+
+  // Auto-fill Location/Department/Band/Designation from the looked-up
+  // employee being replaced, so the recruiter doesn't have to re-select
+  // what the system already knows from the EMP ID.
+  $('rEmpId').onblur = async () => {
+    if (state.hireType !== 'replacement') return;
+    const empId = $('rEmpId').value.trim();
+    if (!empId) return;
+    try {
+      const resp = await fetch(`/api/lookup-emp?id=${encodeURIComponent(empId)}`);
+      const data = await resp.json();
+      if (!data.found) return;
+      if (data.location) { $('rLoc').value = data.location; refreshDept(); }
+      if (data.department) { $('rDept').value = data.department; refreshBand(); }
+      if (data.band != null) { $('rBand').value = String(data.band); refreshDesig(); }
+      if (data.designation) { $('rDesig').value = data.designation; }
+    } catch (e) { /* silent — Calculate will re-validate the EMP ID anyway */ }
   };
 
   const uniq = (key, filterFn) => [...new Set(state.data.filter(filterFn).map(d => d[key]).filter(Boolean))].sort(natural);
@@ -793,13 +812,11 @@ function initRecruiterTool() {
   $('rCalcBtn').onclick = async () => {
     const loc = $('rLoc').value, dept = $('rDept').value, band = $('rBand').value, desig = $('rDesig').value;
     const m = $('rMetric').value, mLabel = label(METRICS, m);
-    const actual = parseFloat($('rSalary').value);
+    let actual = parseFloat($('rSalary').value);
     const out = $('recruiterResult');
     const isReplacement = state.hireType === 'replacement';
     const empId = $('rEmpId').value.trim();
 
-    if (!desig) { out.innerHTML = '<div class="status err">Please select at least a Designation.</div>'; return; }
-    if (!actual || actual <= 0) { out.innerHTML = '<div class="status err">Enter a valid proposed/actual salary.</div>'; return; }
     if (isReplacement && !empId) { out.innerHTML = '<div class="status err">Enter the EMP ID of the employee being replaced.</div>'; return; }
 
     let replacedEmp = null;
@@ -818,6 +835,16 @@ function initRecruiterTool() {
         return;
       }
     }
+
+    if (!desig) { out.innerHTML = '<div class="status err">Please select at least a Designation.</div>'; return; }
+
+    // Proposed/Actual Salary is required for "New" hires, but optional for
+    // "Replacement" — if left blank, default to the replaced employee's
+    // current pay so the recruiter can still see where they stand.
+    if (isReplacement && (!actual || actual <= 0) && replacedEmp[m] > 0) {
+      actual = replacedEmp[m];
+    }
+    if (!actual || actual <= 0) { out.innerHTML = '<div class="status err">Enter a valid proposed/actual salary.</div>'; return; }
 
     const matches = state.data.filter(d =>
       (!loc || d.loc === loc) && (!dept || d.dept === dept) && (!band || String(d.band) === band) && d.desig === desig);
