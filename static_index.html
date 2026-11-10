@@ -49,9 +49,15 @@
   .grid2 { display: grid; gap: 14px; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); align-items: stretch; }
   .grid2 > .panel { display: flex; flex-direction: column; }
   @media (max-width: 1100px) { .grid2 { grid-template-columns: 1fr; } }
+  .grid3 { display: grid; gap: 14px; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: stretch; }
+  .grid3 > .panel { display: flex; flex-direction: column; }
+  @media (max-width: 1400px) { .grid3 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 900px) { .grid3 { grid-template-columns: 1fr; } }
   .phead { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; padding: 14px 16px 10px; min-height: 94px; box-sizing: border-box; }
   .tablewrap { overflow: auto; max-height: 460px; height: 460px; border-top: 1px solid var(--border); }
   table { width: 100%; table-layout: fixed; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+  #tableArea table { min-width: 620px; }
+  #chart table { min-width: 320px; }
   th:nth-child(1), td:nth-child(1) { width: 21%; }
   th:nth-child(2), td:nth-child(2) { width: 7%; }
   th:nth-child(3), td:nth-child(3), th:nth-child(4), td:nth-child(4), th:nth-child(5), td:nth-child(5) { width: 10%; }
@@ -172,7 +178,7 @@
 
   <section class="kpis" id="kpis"></section>
 
-  <div class="grid2">
+  <div class="grid3">
     <section class="panel">
       <div class="phead">
         <h2 id="tableTitle"></h2>
@@ -189,14 +195,15 @@
       <div class="tablewrap" id="chart"></div>
       <div class="foot" id="chartFoot"></div>
     </section>
-  </div>
 
-  <section class="panel" style="margin-top:14px;">
-    <div class="phead">
-      <h2 id="densityTitle">Salary Density (Pay Concentration)</h2>
-    </div>
-    <div class="tablewrap" id="densityTable"></div>
-    <div class="foot" id="densityFoot">100% stacked bar per designation: Below avg −10% / Within ±10% (density) / Above avg +10%, as a share of that group's employees. Sorted by green % ascending — scattered-pay designations sit at the top. Long green bar = dense pay; large blue share = underpay/equity risk; large orange share = overpay/cost risk.</div>
+    <section class="panel">
+      <div class="phead">
+        <h2 id="densityTitle">Salary Density (Pay Concentration)</h2>
+      </div>
+      <div class="tablewrap" id="densityTable"></div>
+      <div class="foot" id="densityFoot">100% stacked bar per designation: Below avg −10% / Within ±10% (density) / Above avg +10%, as a share of that group's employees. Sorted by green % ascending — scattered-pay designations sit at the top. Long green bar = dense pay; large blue share = underpay/equity risk; large orange share = overpay/cost risk.</div>
+    </section>
+  </div>
   </section>
 
   <section class="panel" style="margin-top:14px;" id="recruiterPanel">
@@ -579,6 +586,10 @@ function renderDensity(rows) {
   const m = state.metric, g = state.groupBy, gLabel = label(GROUPS, g);
   $('densityTitle').textContent = `Salary Density (Pay Concentration) by ${gLabel}`;
 
+  if (state.chartFilterGroup != null) {
+    rows = rows.filter(r => (r[g] || '(blank)') === state.chartFilterGroup);
+  }
+
   const buckets = new Map();
   for (const r of rows) { const k = r[g] || '(blank)'; if (!buckets.has(k)) buckets.set(k, []); buckets.get(k).push(r); }
 
@@ -610,10 +621,12 @@ function renderDensity(rows) {
   const x = pct => LABEL_W + (pct / 100) * plotW;
 
   const COL_BELOW = '#3b82f6', COL_WITHIN = '#10b981', COL_ABOVE = '#f97316';
-  const seg = (x1, w, color, pct) => {
+  const seg = (x1, w, color, pct, count) => {
     if (w <= 0) return '';
-    const label = pct >= 8 ? `<text x="${(x1 + w / 2).toFixed(1)}" y="0" dy="0.35em" text-anchor="middle" font-size="11.5" font-weight="700" fill="#fff">${pct.toFixed(0)}%</text>` : '';
-    return `<rect x="${x1.toFixed(1)}" width="${w.toFixed(1)}" height="${barH}" fill="${color}"/>${label}`;
+    const full = `${pct.toFixed(0)}% (${count})`;
+    const label = pct >= 14 ? full : pct >= 6 ? `${pct.toFixed(0)}%` : '';
+    const text = label ? `<text x="${(x1 + w / 2).toFixed(1)}" y="0" dy="0.35em" text-anchor="middle" font-size="11" font-weight="700" fill="#fff">${label}</text>` : '';
+    return `<rect x="${x1.toFixed(1)}" width="${w.toFixed(1)}" height="${barH}" fill="${color}"/>${text}`;
   };
 
   let rowsSvg = '';
@@ -621,13 +634,14 @@ function renderDensity(rows) {
     const rowY = PAD_TOP + ri * ROW_H;
     const cy = rowY + barH / 2;
     const x0 = x(0), xBelow = x(s.belowPct), xWithin = x(s.belowPct + s.withinPct), x100 = x(100);
-    rowsSvg += `<g transform="translate(0, ${rowY})">
-      <text x="${LABEL_W - 16}" y="${barH / 2}" dy="0.35em" text-anchor="end" font-size="12.5" font-weight="600" fill="var(--text)">${esc(s.group)} (n=${s.n})</text>
-      <rect x="${x0.toFixed(1)}" width="${(x100 - x0).toFixed(1)}" height="${barH}" fill="var(--surface-2)" rx="3"/>
-      <g transform="translate(0, ${barH / 2})">
-        ${seg(x0, xBelow - x0, COL_BELOW, s.belowPct)}
-        ${seg(xBelow, xWithin - xBelow, COL_WITHIN, s.withinPct)}
-        ${seg(xWithin, x100 - xWithin, COL_ABOVE, s.abovePct)}
+    const selected = state.chartFilterGroup === s.group;
+    rowsSvg += `<g class="density-row" data-group="${esc(s.group)}" style="cursor:pointer;">
+      <text x="${LABEL_W - 16}" y="${rowY + barH / 2}" dy="0.35em" text-anchor="end" font-size="12.5" font-weight="600" fill="var(--text)">${esc(s.group)}</text>
+      <rect x="${x0.toFixed(1)}" y="${rowY}" width="${(x100 - x0).toFixed(1)}" height="${barH}" fill="var(--surface-2)" rx="3" ${selected ? 'stroke="var(--accent)" stroke-width="2"' : ''}/>
+      <g transform="translate(0, ${rowY + barH / 2})">
+        ${seg(x0, xBelow - x0, COL_BELOW, s.belowPct, s.below)}
+        ${seg(xBelow, xWithin - xBelow, COL_WITHIN, s.withinPct, s.within)}
+        ${seg(xWithin, x100 - xWithin, COL_ABOVE, s.abovePct, s.above)}
       </g>
     </g>`;
   });
@@ -648,6 +662,14 @@ function renderDensity(rows) {
       ${rowsSvg}
       ${axisSvg}
     </svg>`;
+
+  $('densityTable').querySelectorAll('.density-row').forEach(gEl => {
+    gEl.onclick = () => {
+      const grp = gEl.dataset.group;
+      state.chartFilterGroup = (state.chartFilterGroup === grp) ? null : grp;
+      render();
+    };
+  });
 }
 function niceStep(raw) {
   const p = Math.pow(10, Math.floor(Math.log10(raw || 1))), f = raw / p;
