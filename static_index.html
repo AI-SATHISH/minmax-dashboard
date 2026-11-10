@@ -689,9 +689,15 @@ function initRecruiterTool() {
         <div class="panel kpi"><div class="label">Compa-Ratio</div><div class="value" ${badge(compaRatio, 90, 110)}>${pctPlain(compaRatio)}</div><div class="who">${esc(compaNote)}</div></div>
       </div>
       <div class="kpis" style="margin-top:12px;">
-        <div class="panel kpi"><div class="label">Penetration from Min</div><div class="value" ${badge(penFromMin, 0, 1e9)}>${pct(penFromMin)}</div><div class="who">${esc(penFromMinNote)}</div></div>
-        <div class="panel kpi"><div class="label">Penetration from Average</div><div class="value" ${badge(penFromAvg, 0, 1e9)}>${pct(penFromAvg)}</div><div class="who">${esc(penFromAvgNote)}</div></div>
-        <div class="panel kpi"><div class="label">Penetration from Max</div><div class="value" ${badge(penFromMax, -1e9, 0)}>${pct(penFromMax)}</div><div class="who">${esc(penFromMaxNote)}</div></div>
+        <div class="panel kpi">
+          <div class="label">Penetration (vs Min / Average / Max)</div>
+          <div class="value" style="display:flex; gap:14px; flex-wrap:wrap; font-size:0.85em;">
+            <span ${badge(penFromMin, 0, 1e9)}>Min: ${pct(penFromMin)}</span>
+            <span ${badge(penFromAvg, 0, 1e9)}>Avg: ${pct(penFromAvg)}</span>
+            <span ${badge(penFromMax, -1e9, 0)}>Max: ${pct(penFromMax)}</span>
+          </div>
+          <div class="who">${esc(penFromMinNote)} · ${esc(penFromAvgNote)} · ${esc(penFromMaxNote)}</div>
+        </div>
       </div>
       <div class="foot" style="padding:12px 0 0;">Based on ${s.n} employee(s) with valid ${esc(mLabel)} in ${esc(desig)}${dept ? ' · ' + esc(dept) : ''}${band ? ' · Band ' + esc(band) : ''}${loc ? ' · ' + esc(loc) : ' · All Locations'}.</div>`;
   };
