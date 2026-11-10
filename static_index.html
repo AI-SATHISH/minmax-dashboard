@@ -196,7 +196,7 @@
       <h2 id="densityTitle">Salary Density (Pay Concentration)</h2>
     </div>
     <div class="tablewrap" id="densityTable"></div>
-    <div class="foot" id="densityFoot">Density % = employees within ±10% of the band midpoint ÷ total employees in that group × 100. Above 70% = tightly clustered (good for equity, watch for pay compression). Below 40% = scattered — check for outliers.</div>
+    <div class="foot" id="densityFoot">Density % = employees within ±10% of the group average ÷ total employees in that group × 100. Above 70% = tightly clustered (good for equity, watch for pay compression). Below 40% = scattered — check for outliers.</div>
   </section>
 
   <section class="panel" style="margin-top:14px;" id="recruiterPanel">
@@ -585,36 +585,76 @@ function renderDensity(rows) {
   let summary = [...buckets].map(([group, rs]) => {
     const vals = rs.map(r => r[m]).filter(v => v != null && v > 0);
     const n = vals.length;
-    if (!n) return { group, count: rs.length, n: 0, mid: null, within: 0, density: null };
-    const min = Math.min(...vals), max = Math.max(...vals);
-    const mid = (min + max) / 2;
-    const lo = mid * 0.9, hi = mid * 1.1;
+    if (!n) return null;
+    const avg = vals.reduce((a, b) => a + b, 0) / n;
+    const lo = avg * 0.9, hi = avg * 1.1;
     const within = vals.filter(v => v >= lo && v <= hi).length;
-    return { group, count: rs.length, n, mid, within, density: (within / n) * 100 };
-  }).filter(s => s.n > 0);
+    return { group, n, avg, lo, hi, vals, within, density: (within / n) * 100 };
+  }).filter(Boolean);
 
-  summary.sort((a, b) => (b.density ?? -1) - (a.density ?? -1));
+  summary.sort((a, b) => b.density - a.density);
 
   if (!summary.length) { $('densityTable').innerHTML = '<div class="empty">No employees match these filters.</div>'; return; }
 
-  const statusOf = d => d == null ? '—' : d > 70 ? 'Tightly clustered' : d < 40 ? 'Scattered — check outliers' : 'Moderate spread';
-  const colorOf = d => d == null ? '' : d > 70 ? 'var(--accent)' : d < 40 ? 'var(--min)' : '';
+  let dataMin = Infinity, dataMax = -Infinity;
+  summary.forEach(s => s.vals.forEach(v => { if (v < dataMin) dataMin = v; if (v > dataMax) dataMax = v; }));
+  const step = niceStep((dataMax - dataMin) / 8 || 1000);
+  const axisMin = Math.max(0, Math.floor(dataMin / step) * step - step);
+  const axisMax = Math.ceil(dataMax / step) * step + step;
 
-  $('densityTable').innerHTML = `<table><thead><tr>
-      <th style="text-align:left">${esc(gLabel)}</th><th>Count</th><th>Band Midpoint</th><th>Within ±10%</th><th>Density %</th><th style="text-align:left">Status</th>
-    </tr></thead><tbody>${
-      summary.map(s => {
-        const color = colorOf(s.density);
-        return `<tr>
-          <td style="text-align:left" title="${esc(s.group)}">${esc(s.group)}</td>
-          <td>${s.count}</td>
-          <td title="${inrFull(s.mid)}">${fmt(s.mid)}</td>
-          <td>${s.within} / ${s.n}</td>
-          <td style="${color ? `color:${color};font-weight:600` : ''}">${s.density.toFixed(1)}%</td>
-          <td style="text-align:left">${esc(statusOf(s.density))}</td>
-        </tr>`;
-      }).join('')
-    }</tbody></table>`;
+  const LABEL_W = 230, ROW_H = 68, PAD_TOP = 10, AXIS_H = 34, R_PAD = 24;
+  const plotW = 1000 - LABEL_W - R_PAD;
+  const totalH = PAD_TOP + summary.length * ROW_H + AXIS_H;
+  const x = v => LABEL_W + ((v - axisMin) / (axisMax - axisMin)) * plotW;
+
+  const ticks = [];
+  for (let t = axisMin; t <= axisMax + 1e-6; t += step) ticks.push(t);
+  const shortK = v => v >= 1000 ? Math.round(v / 1000) + 'k' : String(Math.round(v));
+
+  let rowsSvg = '';
+  summary.forEach((s, ri) => {
+    const cy = PAD_TOP + ri * ROW_H + ROW_H / 2;
+    const bandY1 = cy - 14, bandY2 = cy + 14;
+    const bx1 = x(s.lo), bx2 = x(s.hi);
+    const placed = [];
+    const dotsSvg = s.vals.map(v => {
+      const px = x(v);
+      const collisions = placed.filter(p => Math.abs(p - px) < 9).length;
+      const dy = collisions ? (collisions % 2 === 0 ? 1 : -1) * Math.ceil(collisions / 2) * 7 : 0;
+      placed.push(px);
+      const outside = !(v >= s.lo && v <= s.hi);
+      const cyDot = cy + dy;
+      return outside
+        ? `<circle cx="${px.toFixed(1)}" cy="${cyDot.toFixed(1)}" r="5" fill="var(--surface)" stroke="var(--accent)" stroke-width="1.6"/>`
+        : `<circle cx="${px.toFixed(1)}" cy="${cyDot.toFixed(1)}" r="5" fill="var(--accent)"/>`;
+    }).join('');
+
+    rowsSvg += `<g>
+      <text x="${LABEL_W - 16}" y="${cy - 6}" text-anchor="end" font-size="13" font-weight="600" fill="var(--text)">${esc(s.group)}</text>
+      <text x="${LABEL_W - 16}" y="${cy + 12}" text-anchor="end" font-size="11" fill="var(--muted)">Density ${s.density.toFixed(0)}% (${s.within}/${s.n})</text>
+      <rect x="${bx1.toFixed(1)}" y="${bandY1}" width="${(bx2 - bx1).toFixed(1)}" height="${bandY2 - bandY1}" fill="var(--min)" fill-opacity="0.15" rx="4"/>
+      <line x1="${x(s.avg).toFixed(1)}" y1="${bandY1 - 4}" x2="${x(s.avg).toFixed(1)}" y2="${bandY2 + 4}" stroke="var(--min)" stroke-width="2"/>
+      ${dotsSvg}
+    </g>`;
+  });
+
+  const plotBottom = PAD_TOP + summary.length * ROW_H;
+  const gridSvg = ticks.map(t => `<line x1="${x(t).toFixed(1)}" y1="${PAD_TOP}" x2="${x(t).toFixed(1)}" y2="${plotBottom}" stroke="var(--border)" stroke-width="1"/>`).join('');
+  const axisSvg = ticks.map(t => `<text x="${x(t).toFixed(1)}" y="${plotBottom + 20}" text-anchor="middle" font-size="11" fill="var(--muted)">${shortK(t)}</text>`).join('');
+
+  $('densityTable').innerHTML = `
+    <div style="padding:10px 16px 4px; display:flex; gap:20px; flex-wrap:wrap; align-items:center; font-size:12px; color:var(--muted);">
+      <span style="display:inline-flex; align-items:center; gap:6px;"><span style="width:10px;height:10px;border-radius:50%;background:var(--accent);display:inline-block;"></span>Employee</span>
+      <span style="display:inline-flex; align-items:center; gap:6px;"><span style="width:22px;height:12px;background:var(--min);opacity:.25;display:inline-block;border-radius:3px;"></span>±10% of average (dense zone)</span>
+      <span style="display:inline-flex; align-items:center; gap:6px;"><span style="width:2px;height:14px;background:var(--min);display:inline-block;"></span>Average</span>
+      <span style="display:inline-flex; align-items:center; gap:6px;"><span style="width:10px;height:10px;border-radius:50%;border:1.6px solid var(--accent);display:inline-block;"></span>Outside zone</span>
+    </div>
+    <svg viewBox="0 0 1000 ${totalH}" preserveAspectRatio="xMidYMid meet" style="width:100%; height:auto; display:block;">
+      ${gridSvg}
+      ${rowsSvg}
+      ${axisSvg}
+      <text x="${LABEL_W + plotW / 2}" y="${totalH - 2}" text-anchor="middle" font-size="11" fill="var(--muted)">${esc(label(METRICS, m))} (₹)</text>
+    </svg>`;
 }
 function niceStep(raw) {
   const p = Math.pow(10, Math.floor(Math.log10(raw || 1))), f = raw / p;
