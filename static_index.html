@@ -252,7 +252,7 @@ const BUCKETS = (() => {
 })();
 
 const state = { data: [], filters: {}, search: '', groupBy: 'desig', metric: 'gross', fmt: 'full', agg: 'sum',
-  sortKey: 'group', sortAsc: true, summary: [], tenureSource: '', showBand: false, chartFilterGroup: null };
+  sortKey: 'group', sortAsc: true, summary: [], tenureSource: '', showBand: false, chartFilterGroup: null, tableFilterBucket: null };
 const $ = id => document.getElementById(id);
 const norm = s => String(s).toLowerCase().replace(/\s+/g, ' ').trim();
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -455,15 +455,19 @@ function render() {
     <div class="panel kpi"><div class="label">Average</div><div class="value" title="${inrFull(all.avg)}">${kpiFmt(all.avg)}</div><div class="who">Median ${kpiFmt(all.median)}</div></div>
     <div class="panel kpi max"><div class="label">Maximum ${mLabel}</div><div class="value" title="${inrFull(all.max)}">${kpiFmt(all.max)}</div><div class="who">${all.maxEmp ? esc(all.maxEmp.desig) : '—'}</div></div>`;
 
-  renderTable(rows, all);
   const g = state.groupBy;
+  const tableRows = (state.tableFilterBucket != null) ? rows.filter(r => r.tenure === state.tableFilterBucket) : rows;
+  const tableAll = stats(tableRows, m);
+  renderTable(tableRows, tableAll);
   const chartRows = (state.chartFilterGroup != null) ? rows.filter(r => (r[g] || '(blank)') === state.chartFilterGroup) : rows;
   renderChart(chartRows);
 }
 
 function renderTable(rows, all) {
   const m = state.metric, g = state.groupBy, gLabel = label(GROUPS, g);
-  $('tableTitle').textContent = `${label(METRICS, m)} by ${gLabel}`;
+  $('tableTitle').textContent = state.tableFilterBucket != null
+    ? `${label(METRICS, m)} by ${gLabel} — Experience: ${state.tableFilterBucket}`
+    : `${label(METRICS, m)} by ${gLabel}`;
 
   const buckets = new Map();
   for (const r of rows) { const k = r[g] || '(blank)'; if (!buckets.has(k)) buckets.set(k, []); buckets.get(k).push(r); }
@@ -540,15 +544,19 @@ function renderChart(rows) {
   $('chart').innerHTML = `<table><thead><tr>
       <th style="text-align:left">Experience</th><th>EMP Count</th><th>Average</th>
     </tr></thead><tbody>${
-      data.map((d, i) => `<tr data-i="${i}" style="cursor:pointer">
+      data.map((d, i) => `<tr data-i="${i}" style="cursor:pointer" class="${state.tableFilterBucket === d.b ? 'selected-row' : ''}">
         <td style="text-align:left">${esc(d.b)}</td>
         <td>${d.count.toLocaleString('en-IN')}</td>
         <td title="${inrFull(d.avgAnnual)}">${fmt(d.avgAnnual)}</td>
       </tr>`).join('')
     }</tbody></table>`;
-  $('chart').querySelectorAll('tbody tr').forEach(tr => tr.onclick = () => {
+  $('chart').querySelectorAll('tbody tr').forEach(tr => {
     const d = data[+tr.dataset.i];
-    openDrawer(`EXP Tenure: ${d.b}`, { ...d.s, group: d.b });
+    tr.onclick = () => {
+      state.tableFilterBucket = (state.tableFilterBucket === d.b) ? null : d.b;
+      render();
+    };
+    tr.ondblclick = () => openDrawer(`EXP Tenure: ${d.b}`, { ...d.s, group: d.b });
   });
 }
 function niceStep(raw) {
