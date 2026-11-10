@@ -474,7 +474,7 @@ function renderTable(rows, all) {
 
   if (!state.summary.length) { $('tableArea').innerHTML = '<div class="empty">No employees match these filters.</div>'; $('foot').textContent = ''; return; }
 
-  const cols = [['group', gLabel], ['count', 'Count'], ['min', 'Min'], ['avg', 'Average'], ['max', 'Max'], ['median', 'Median']];
+  const cols = [['group', gLabel], ['count', 'Count'], ['min', 'Min'], ['avg', 'Average'], ['max', 'Max']];
   const cell = (v, cls = '') => `<td class="${cls}" title="${inrFull(v)}">${fmt(v)}</td>`;
   const pct = v => (v == null || isNaN(v)) ? '—' : `${v.toFixed(1)}%`;
   const ratioCell = (v, lo, hi) => {
@@ -482,16 +482,17 @@ function renderTable(rows, all) {
     return `<td style="${color ? `color:${color};font-weight:600` : ''}">${pct(v)}</td>`;
   };
 
-  $('tableArea').innerHTML = `<table><thead><tr>${cols.map(([k, l]) => `<th data-k="${k}" class="${k === sk ? 'sorted' + (asc ? ' asc' : '') : ''}">${l}</th>`).join('')}<th style="cursor:default" title="Average ÷ Band Midpoint">Comp Ratio</th><th style="cursor:default" title="Where Average sits between Min and Max">Penetration</th></tr></thead><tbody>${
+  $('tableArea').innerHTML = `<table><thead><tr>${cols.map(([k, l]) => `<th data-k="${k}" class="${k === sk ? 'sorted' + (asc ? ' asc' : '') : ''}">${l}</th>`).join('')}<th style="cursor:default" title="Average ÷ Band Midpoint">Comp Ratio</th><th style="cursor:default" title="How much Average is above Min">Min→Avg %</th><th style="cursor:default" title="How much Max is above Average">Avg→Max %</th></tr></thead><tbody>${
     state.summary.map((s, i) => {
       const mid = (s.min != null && s.max != null) ? (s.min + s.max) / 2 : null;
       const compaRatio = (mid && s.avg != null) ? (s.avg / mid) * 100 : null;
-      const rangePen = (s.max != null && s.min != null && s.max > s.min && s.avg != null) ? ((s.avg - s.min) / (s.max - s.min)) * 100 : null;
+      const minToAvg = (s.min != null && s.min > 0 && s.avg != null) ? ((s.avg - s.min) / s.min) * 100 : null;
+      const avgToMax = (s.avg != null && s.avg > 0 && s.max != null) ? ((s.max - s.avg) / s.avg) * 100 : null;
       return `<tr data-i="${i}">
-      <td title="${esc(s.group)}">${esc(s.group)}</td><td>${s.count}</td>${cell(s.min, 'min')}${cell(s.avg)}${cell(s.max, 'max')}${cell(s.median)}
-      ${ratioCell(compaRatio, 90, 110)}${ratioCell(rangePen, 0, 100)}</tr>`;
+      <td title="${esc(s.group)}">${esc(s.group)}</td><td>${s.count}</td>${cell(s.min, 'min')}${cell(s.avg)}${cell(s.max, 'max')}
+      ${ratioCell(compaRatio, 90, 110)}${ratioCell(minToAvg, 0, 1e9)}${ratioCell(avgToMax, 0, 1e9)}</tr>`;
     }).join('')
-  }</tbody><tfoot><tr><td>Total</td><td>${all.count}</td>${cell(all.min)}${cell(all.avg)}${cell(all.max)}${cell(all.median)}<td></td><td></td></tr></tfoot></table>`;
+  }</tbody><tfoot><tr><td>Total</td><td>${all.count}</td>${cell(all.min)}${cell(all.avg)}${cell(all.max)}<td></td><td></td><td></td></tr></tfoot></table>`;
 
   $('tableArea').querySelectorAll('th[data-k]').forEach(th => th.onclick = () => {
     const k = th.dataset.k;
