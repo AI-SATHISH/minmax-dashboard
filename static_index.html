@@ -62,6 +62,12 @@
   #chart th:nth-child(1), #chart td:nth-child(1) { width: 36%; }
   #chart th:nth-child(2), #chart td:nth-child(2) { width: 28%; }
   #chart th:nth-child(3), #chart td:nth-child(3) { width: 36%; }
+  #densityTable th:nth-child(1), #densityTable td:nth-child(1) { width: 26%; }
+  #densityTable th:nth-child(2), #densityTable td:nth-child(2) { width: 10%; }
+  #densityTable th:nth-child(3), #densityTable td:nth-child(3) { width: 16%; }
+  #densityTable th:nth-child(4), #densityTable td:nth-child(4) { width: 14%; }
+  #densityTable th:nth-child(5), #densityTable td:nth-child(5) { width: 12%; }
+  #densityTable th:nth-child(6), #densityTable td:nth-child(6) { width: 22%; }
   .drawer-table th:nth-child(1), .drawer-table td:nth-child(1) { width: 6%; }
   .drawer-table th:nth-child(2), .drawer-table td:nth-child(2) { width: 42%; }
   .drawer-table th:nth-child(3), .drawer-table td:nth-child(3) { width: 22%; }
@@ -184,6 +190,14 @@
       <div class="foot" id="chartFoot"></div>
     </section>
   </div>
+
+  <section class="panel" style="margin-top:14px;">
+    <div class="phead">
+      <h2 id="densityTitle">Salary Density (Pay Concentration)</h2>
+    </div>
+    <div class="tablewrap" id="densityTable"></div>
+    <div class="foot" id="densityFoot">Density % = employees within ±10% of the band midpoint ÷ total employees in that group × 100. Above 70% = tightly clustered (good for equity, watch for pay compression). Below 40% = scattered — check for outliers.</div>
+  </section>
 
   <section class="panel" style="margin-top:14px;" id="recruiterPanel">
     <div class="phead">
@@ -461,6 +475,7 @@ function render() {
   renderTable(tableRows, tableAll);
   const chartRows = (state.chartFilterGroup != null) ? rows.filter(r => (r[g] || '(blank)') === state.chartFilterGroup) : rows;
   renderChart(chartRows);
+  renderDensity(rows);
 }
 
 function renderTable(rows, all) {
@@ -558,6 +573,48 @@ function renderChart(rows) {
     };
     tr.ondblclick = () => openDrawer(`EXP Tenure: ${d.b}`, { ...d.s, group: d.b });
   });
+}
+
+function renderDensity(rows) {
+  const m = state.metric, g = state.groupBy, gLabel = label(GROUPS, g);
+  $('densityTitle').textContent = `Salary Density (Pay Concentration) by ${gLabel}`;
+
+  const buckets = new Map();
+  for (const r of rows) { const k = r[g] || '(blank)'; if (!buckets.has(k)) buckets.set(k, []); buckets.get(k).push(r); }
+
+  let summary = [...buckets].map(([group, rs]) => {
+    const vals = rs.map(r => r[m]).filter(v => v != null && v > 0);
+    const n = vals.length;
+    if (!n) return { group, count: rs.length, n: 0, mid: null, within: 0, density: null };
+    const min = Math.min(...vals), max = Math.max(...vals);
+    const mid = (min + max) / 2;
+    const lo = mid * 0.9, hi = mid * 1.1;
+    const within = vals.filter(v => v >= lo && v <= hi).length;
+    return { group, count: rs.length, n, mid, within, density: (within / n) * 100 };
+  }).filter(s => s.n > 0);
+
+  summary.sort((a, b) => (b.density ?? -1) - (a.density ?? -1));
+
+  if (!summary.length) { $('densityTable').innerHTML = '<div class="empty">No employees match these filters.</div>'; return; }
+
+  const statusOf = d => d == null ? '—' : d > 70 ? 'Tightly clustered' : d < 40 ? 'Scattered — check outliers' : 'Moderate spread';
+  const colorOf = d => d == null ? '' : d > 70 ? 'var(--accent)' : d < 40 ? 'var(--min)' : '';
+
+  $('densityTable').innerHTML = `<table><thead><tr>
+      <th style="text-align:left">${esc(gLabel)}</th><th>Count</th><th>Band Midpoint</th><th>Within ±10%</th><th>Density %</th><th style="text-align:left">Status</th>
+    </tr></thead><tbody>${
+      summary.map(s => {
+        const color = colorOf(s.density);
+        return `<tr>
+          <td style="text-align:left" title="${esc(s.group)}">${esc(s.group)}</td>
+          <td>${s.count}</td>
+          <td title="${inrFull(s.mid)}">${fmt(s.mid)}</td>
+          <td>${s.within} / ${s.n}</td>
+          <td style="${color ? `color:${color};font-weight:600` : ''}">${s.density.toFixed(1)}%</td>
+          <td style="text-align:left">${esc(statusOf(s.density))}</td>
+        </tr>`;
+      }).join('')
+    }</tbody></table>`;
 }
 function niceStep(raw) {
   const p = Math.pow(10, Math.floor(Math.log10(raw || 1))), f = raw / p;
