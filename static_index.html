@@ -855,7 +855,7 @@ function initRecruiterTool() {
       return;
     }
 
-    const mid = (s.min + s.max) / 2;
+    const mid = s.avg;
     const compaRatio = mid ? (actual / mid) * 100 : null;
     // How much the proposed/actual salary penetrates above/below each reference point.
     const penFromMin = (s.min > 0) ? ((actual - s.min) / s.min) * 100 : null;
@@ -908,7 +908,7 @@ function initRecruiterTool() {
       ${replacementBlock}
       <div class="kpis" style="margin-bottom:12px;">
         <div class="panel kpi"><div class="label">Band Min</div><div class="value">${fmt(s.min)}</div></div>
-        <div class="panel kpi"><div class="label">Band Midpoint</div><div class="value">${fmt(mid)}</div></div>
+        <div class="panel kpi"><div class="label">Band Average</div><div class="value">${fmt(mid)}</div></div>
         <div class="panel kpi"><div class="label">Band Max</div><div class="value">${fmt(s.max)}</div></div>
         <div class="panel kpi"><div class="label">Sample Size</div><div class="value">${s.n}</div></div>
       </div>
