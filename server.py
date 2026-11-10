@@ -329,6 +329,20 @@ def _parse_number(v):
         return None
 
 
+# EMP IDs to always exclude from the dashboard (not from the Zoho source
+# sheet itself) — e.g. duplicate/test records flagged by HR for removal.
+EXCLUDED_EMP_IDS = {"1501", "1502"}
+
+
+def _is_excluded(cells, empid_col_idx):
+    if empid_col_idx is None:
+        return False
+    raw = str(cells.get(empid_col_idx, "") or "").strip()
+    # Match on the trailing digits so "1501", "EIN 1501", "EIN1501" all match.
+    digits = "".join(ch for ch in raw if ch.isdigit())
+    return digits in EXCLUDED_EMP_IDS
+
+
 @app.route("/api/data")
 @login_required
 def api_data():
@@ -344,6 +358,7 @@ def api_data():
     band_col_idx = _col_idx(col_to_header, "band")
     location_col_idx = _col_idx(col_to_header, "location")
     costhead_col_idx = _col_idx(col_to_header, "costing heads")
+    empid_col_idx = _col_idx(col_to_header, "emp id")
     keep_col_idx = [i for i in sorted(col_to_header) if col_to_header[i] in keep_headers]
 
     rows = []
@@ -351,6 +366,8 @@ def api_data():
         cells = {c["column_index"]: c.get("content", "") for c in rd.get("row_details", [])}
 
         if not _row_visible(cells, sub_band_col_idx, band_col_idx, location_col_idx, costhead_col_idx):
+            continue
+        if _is_excluded(cells, empid_col_idx):
             continue
 
         row = [cells.get(i, "") for i in keep_col_idx]
@@ -408,6 +425,8 @@ def api_lookup_emp():
                 continue
 
             if not _row_visible(cells, sub_band_col_idx, band_col_idx, location_col_idx, costhead_col_idx):
+                return jsonify({"found": False})
+            if _is_excluded(cells, empid_col_idx):
                 return jsonify({"found": False})
 
             return jsonify({
