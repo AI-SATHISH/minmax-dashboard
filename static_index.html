@@ -46,7 +46,7 @@
   .seg { display: inline-flex; background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; padding: 2px; }
   .seg button { border: 0; background: transparent; padding: 5px 10px; border-radius: 6px; cursor: pointer; color: var(--muted); }
   .seg button.on { background: var(--surface); color: var(--text); box-shadow: var(--shadow); font-weight: 600; }
-  .grid2 { display: grid; gap: 14px; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); align-items: start; }
+  .grid2 { display: grid; gap: 14px; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); align-items: stretch; }
   .grid2 > .panel { display: flex; flex-direction: column; }
   @media (max-width: 1100px) { .grid2 { grid-template-columns: 1fr; } }
   .grid3 { display: grid; gap: 14px; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: stretch; }
