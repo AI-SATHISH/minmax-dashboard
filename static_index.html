@@ -95,7 +95,7 @@
   tbody tr.selected-row { background: var(--surface-2); box-shadow: inset 3px 0 0 var(--accent); }
   td:first-child { font-weight: 600; }
   tfoot { box-shadow: 0 -8px 0 var(--surface); }
-  tfoot td { position: sticky; bottom: 0; background: var(--head); font-weight: 700; font-size: 13px; border-bottom: 0; padding-top: 12px; overflow: hidden; }
+  tfoot td { background: var(--head); font-weight: 700; font-size: 13px; border-bottom: 0; padding-top: 12px; overflow: hidden; }
   td.min { color: var(--min); font-weight: 600; } td.max { color: var(--max); font-weight: 600; }
   td.rangecell { min-width: 140px; width: 22%; }
   .range { position: relative; height: 14px; }
@@ -631,7 +631,7 @@ function renderDensity(rows) {
     if (w <= 0) return '';
     const full = `${pct.toFixed(0)}% (${count})`;
     const label = pct >= 14 ? full : pct >= 6 ? `${pct.toFixed(0)}%` : '';
-    const text = label ? `<text x="${(x1 + w / 2).toFixed(1)}" y="0" dy="0.35em" text-anchor="middle" font-size="11" font-weight="700" fill="#fff">${label}</text>` : '';
+    const text = label ? `<text x="${(x1 + w / 2).toFixed(1)}" y="0" dy="0.35em" text-anchor="middle" font-size="11" font-weight="700" fill="#000">${label}</text>` : '';
     return `<rect x="${x1.toFixed(1)}" width="${w.toFixed(1)}" height="${barH}" fill="${color}"/>${text}`;
   };
 
@@ -643,7 +643,7 @@ function renderDensity(rows) {
     const selected = state.chartFilterGroup === s.group;
     rowsSvg += `<g class="density-row" data-group="${esc(s.group)}" style="cursor:pointer;">
       <text x="${LABEL_W - 16}" y="${rowY + barH / 2}" dy="0.35em" text-anchor="end" font-size="12.5" font-weight="600" fill="var(--text)">${esc(s.group)}</text>
-      <rect x="${x0.toFixed(1)}" y="${rowY}" width="${(x100 - x0).toFixed(1)}" height="${barH}" fill="var(--surface-2)" rx="3" ${selected ? 'stroke="var(--accent)" stroke-width="2"' : ''}/>
+      <rect x="${x0.toFixed(1)}" y="${rowY}" width="${(x100 - x0).toFixed(1)}" height="${barH}" fill="var(--surface)" rx="3" ${selected ? 'stroke="var(--accent)" stroke-width="2"' : ''}/>
       <g transform="translate(0, ${rowY + barH / 2})">
         ${seg(x0, xBelow - x0, COL_BELOW, s.belowPct, s.below)}
         ${seg(xBelow, xWithin - xBelow, COL_WITHIN, s.withinPct, s.within)}
