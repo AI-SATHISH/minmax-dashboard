@@ -338,6 +338,8 @@ def _is_excluded(cells, empid_col_idx):
     if empid_col_idx is None:
         return False
     raw = str(cells.get(empid_col_idx, "") or "").strip()
+    if raw.upper().startswith("NMR"):
+        return True
     # Match on the trailing digits so "1501", "EIN 1501", "EIN1501" all match.
     digits = "".join(ch for ch in raw if ch.isdigit())
     return digits in EXCLUDED_EMP_IDS
