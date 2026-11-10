@@ -549,7 +549,14 @@ function renderTable(rows, all) {
       <td title="${esc(s.group)}">${esc(s.group)}</td><td>${s.count}</td>${cell(s.min, 'min')}${cell(s.avg)}${cell(s.max, 'max')}
       ${ratioCell(compaRatio, 90, 110)}${ratioCell(minToAvg, 0, 1e9)}${ratioCell(avgToMax, 0, 1e9)}${ratioCell(maxToMin, 0, 1e9)}</tr>`;
     }).join('')
-  }</tbody><tfoot><tr><td>Total</td><td>${all.count}</td>${cell(all.min)}${cell(all.avg)}${cell(all.max)}<td></td><td></td><td></td><td></td></tr></tfoot></table>`;
+  }</tbody><tfoot><tr><td>Total</td><td>${all.count}</td>${cell(all.min)}${cell(all.avg)}${cell(all.max)}${(() => {
+    const mid = (all.min != null && all.max != null) ? (all.min + all.max) / 2 : null;
+    const compaRatio = (mid && all.avg != null) ? (all.avg / mid) * 100 : null;
+    const minToAvg = (all.min != null && all.min > 0 && all.avg != null) ? ((all.avg - all.min) / all.min) * 100 : null;
+    const avgToMax = (all.avg != null && all.avg > 0 && all.max != null) ? ((all.max - all.avg) / all.avg) * 100 : null;
+    const maxToMin = (all.min != null && all.min > 0 && all.max != null) ? ((all.max - all.min) / all.min) * 100 : null;
+    return `${ratioCell(compaRatio, 90, 110)}${ratioCell(minToAvg, 0, 1e9)}${ratioCell(avgToMax, 0, 1e9)}${ratioCell(maxToMin, 0, 1e9)}`;
+  })()}</tr></tfoot></table>`;
 
   $('tableArea').querySelectorAll('th[data-k]').forEach(th => th.onclick = () => {
     const k = th.dataset.k;
