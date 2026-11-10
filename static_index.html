@@ -48,6 +48,7 @@
   .seg button.on { background: var(--surface); color: var(--text); box-shadow: var(--shadow); font-weight: 600; }
   .grid2 { display: grid; gap: 14px; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); align-items: stretch; }
   .grid2 > .panel { display: flex; flex-direction: column; }
+  .grid2 > .panel .tablewrap { flex: 1 1 auto; height: auto; max-height: none; }
   @media (max-width: 1100px) { .grid2 { grid-template-columns: 1fr; } }
   .grid3 { display: grid; gap: 14px; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: stretch; }
   .grid3 > .panel { display: flex; flex-direction: column; }
@@ -55,7 +56,12 @@
   @media (max-width: 900px) { .grid3 { grid-template-columns: 1fr; } }
   .phead { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; padding: 14px 16px 10px; min-height: 94px; box-sizing: border-box; }
   .tablewrap { overflow: auto; max-height: 460px; height: 460px; border-top: 1px solid var(--border); }
-  .tablewrap-half { max-height: 215px; height: 215px; }
+  .stack-col { display: flex; flex-direction: column; gap: 14px; height: 100%; }
+  .stack-fit { flex: 0 0 auto; }
+  .stack-fill { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+  .stack-fill .tablewrap-fill { flex: 1 1 auto; }
+  .tablewrap-fit { max-height: none; height: auto; overflow: visible; }
+  .tablewrap-fill { max-height: none; height: auto; overflow: auto; }
   table { width: 100%; table-layout: fixed; border-collapse: collapse; font-variant-numeric: tabular-nums; }
   #tableArea table { min-width: 620px; }
   #chart table { min-width: 320px; }
@@ -189,20 +195,20 @@
       <div class="foot" id="foot"></div>
     </section>
 
-    <div style="display:flex; flex-direction:column; gap:14px;">
-      <section class="panel">
+    <div class="stack-col">
+      <section class="panel stack-fit">
         <div class="phead">
           <h2 id="chartTitle">Average Annual Gross Salary by Total Experience</h2>
         </div>
-        <div class="tablewrap tablewrap-half" id="chart"></div>
+        <div class="tablewrap tablewrap-fit" id="chart"></div>
         <div class="foot" id="chartFoot"></div>
       </section>
 
-      <section class="panel">
+      <section class="panel stack-fill">
         <div class="phead">
           <h2 id="densityTitle">Salary Density (Pay Concentration)</h2>
         </div>
-        <div class="tablewrap tablewrap-half" id="densityTable"></div>
+        <div class="tablewrap tablewrap-fill" id="densityTable"></div>
         <div class="foot" id="densityFoot">100% stacked bar per designation: Below avg −10% / Within ±10% (density) / Above avg +10%, as a share of that group's employees. Sorted by green % ascending — scattered-pay designations sit at the top. Long green bar = dense pay; large blue share = underpay/equity risk; large orange share = overpay/cost risk.</div>
       </section>
     </div>
