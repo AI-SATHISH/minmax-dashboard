@@ -620,8 +620,13 @@ function renderDensity(rows) {
 
   if (!summary.length) { $('densityTable').innerHTML = '<div class="empty">No employees match these filters.</div>'; return; }
 
-  const LABEL_W = 240, ROW_H = 44, ROW_GAP = 6, PAD_TOP = 10, AXIS_H = 30, R_PAD = 16;
-  const plotW = 1000 - LABEL_W - R_PAD;
+  // Size the SVG's viewBox to the real on-screen pixel width so 1 unit == 1px —
+  // using a fixed 1000-unit canvas made all text/row-height render at roughly
+  // half the intended size on a ~485px-wide panel (illegible axis ticks,
+  // cramped rows), since font-size/etc were tuned assuming a 1000px canvas.
+  const VBW = Math.max(400, Math.round($('densityTable').clientWidth || 500));
+  const LABEL_W = Math.min(200, Math.round(VBW * 0.32)), ROW_H = 46, ROW_GAP = 10, PAD_TOP = 10, AXIS_H = 26, R_PAD = 10;
+  const plotW = VBW - LABEL_W - R_PAD;
   const barH = ROW_H - ROW_GAP;
   const totalH = PAD_TOP + summary.length * ROW_H + AXIS_H;
   const x = pct => LABEL_W + (pct / 100) * plotW;
@@ -631,7 +636,7 @@ function renderDensity(rows) {
     if (w <= 0) return '';
     const full = `${pct.toFixed(0)}% (${count})`;
     const label = pct >= 14 ? full : pct >= 6 ? `${pct.toFixed(0)}%` : '';
-    const text = label ? `<text x="${(x1 + w / 2).toFixed(1)}" y="0" dy="0.35em" text-anchor="middle" font-size="11" font-weight="700" fill="#000">${label}</text>` : '';
+    const text = label ? `<text x="${(x1 + w / 2).toFixed(1)}" y="0" dy="0.35em" text-anchor="middle" font-size="12" font-weight="700" fill="#000">${label}</text>` : '';
     return `<rect x="${x1.toFixed(1)}" width="${w.toFixed(1)}" height="${barH}" fill="${color}"/>${text}`;
   };
 
@@ -642,7 +647,7 @@ function renderDensity(rows) {
     const x0 = x(0), xBelow = x(s.belowPct), xWithin = x(s.belowPct + s.withinPct), x100 = x(100);
     const selected = state.chartFilterGroup === s.group;
     rowsSvg += `<g class="density-row" data-group="${esc(s.group)}" style="cursor:pointer;">
-      <text x="${LABEL_W - 16}" y="${rowY + barH / 2}" dy="0.35em" text-anchor="end" font-size="12.5" font-weight="600" fill="var(--text)">${esc(s.group)}</text>
+      <text x="${LABEL_W - 10}" y="${rowY + barH / 2}" dy="0.35em" text-anchor="end" font-size="13" font-weight="600" fill="var(--text)">${esc(s.group)}</text>
       <rect x="${x0.toFixed(1)}" y="${rowY}" width="${(x100 - x0).toFixed(1)}" height="${barH}" fill="var(--surface)" rx="3" ${selected ? 'stroke="var(--accent)" stroke-width="2"' : ''}/>
       <g transform="translate(0, ${rowY + barH / 2})">
         ${seg(x0, xBelow - x0, COL_BELOW, s.belowPct, s.below)}
@@ -655,7 +660,7 @@ function renderDensity(rows) {
   const plotBottom = PAD_TOP + summary.length * ROW_H;
   const ticks = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100];
   const gridSvg = ticks.map(t => `<line x1="${x(t).toFixed(1)}" y1="${PAD_TOP}" x2="${x(t).toFixed(1)}" y2="${plotBottom}" stroke="var(--border)" stroke-width="1"/>`).join('');
-  const axisSvg = ticks.map(t => `<text x="${x(t).toFixed(1)}" y="${plotBottom + 18}" text-anchor="middle" font-size="11" fill="var(--muted)">${t}%</text>`).join('');
+  const axisSvg = ticks.map(t => `<text x="${x(t).toFixed(1)}" y="${plotBottom + 18}" text-anchor="middle" font-size="12" fill="var(--muted)">${t}%</text>`).join('');
 
   $('densityTable').innerHTML = `
     <div style="padding:10px 16px 4px; display:flex; gap:20px; flex-wrap:wrap; align-items:center; font-size:12px; color:var(--muted);">
@@ -663,7 +668,7 @@ function renderDensity(rows) {
       <span style="display:inline-flex; align-items:center; gap:6px;"><span style="width:14px;height:14px;background:${COL_WITHIN};display:inline-block;border-radius:3px;"></span>Within ±10% (density)</span>
       <span style="display:inline-flex; align-items:center; gap:6px;"><span style="width:14px;height:14px;background:${COL_ABOVE};display:inline-block;border-radius:3px;"></span>Above avg +10%</span>
     </div>
-    <svg viewBox="0 0 1000 ${totalH}" preserveAspectRatio="xMidYMid meet" style="width:100%; height:auto; display:block;">
+    <svg viewBox="0 0 ${VBW} ${totalH}" preserveAspectRatio="xMidYMid meet" style="width:100%; height:auto; display:block;">
       ${gridSvg}
       ${rowsSvg}
       ${axisSvg}
