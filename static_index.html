@@ -630,7 +630,10 @@ function initRecruiterTool() {
 
     const mid = (s.min + s.max) / 2;
     const compaRatio = mid ? (actual / mid) * 100 : null;
-    const rangePen = (s.max > s.min) ? ((actual - s.min) / (s.max - s.min)) * 100 : null;
+    // How much the proposed/actual salary penetrates above/below each reference point.
+    const penFromMin = (s.min > 0) ? ((actual - s.min) / s.min) * 100 : null;
+    const penFromAvg = (s.avg > 0) ? ((actual - s.avg) / s.avg) * 100 : null;
+    const penFromMax = (s.max > 0) ? ((actual - s.max) / s.max) * 100 : null;
 
     const compaNote = compaRatio == null ? '—'
       : compaRatio < 80 ? 'Below typical range — may risk attrition / hard to attract candidate'
@@ -638,14 +641,21 @@ function initRecruiterTool() {
       : compaRatio <= 110 ? 'Standard range for a seasoned, solid performer'
       : compaRatio <= 120 ? 'Top-tier / highly critical skillset range'
       : 'Above typical range — review for overpay risk';
-    const penNote = rangePen == null ? '—'
-      : rangePen < 0 ? 'Below the band minimum'
-      : rangePen > 100 ? 'Above the band maximum — capped out'
-      : rangePen >= 95 ? 'Virtually no room left without a promotion / band adjustment'
-      : rangePen >= 50 ? 'Upper half of the range — solid room remains'
-      : 'Lower half of the range — plenty of room for growth';
+    const penFromMinNote = penFromMin == null ? '—'
+      : penFromMin < 0 ? 'Below the band minimum'
+      : penFromMin === 0 ? 'Exactly at the band minimum'
+      : 'Above the band minimum';
+    const penFromAvgNote = penFromAvg == null ? '—'
+      : penFromAvg < 0 ? 'Below the average'
+      : penFromAvg === 0 ? 'Exactly at the average'
+      : 'Above the average';
+    const penFromMaxNote = penFromMax == null ? '—'
+      : penFromMax > 0 ? 'Above the band maximum — capped out'
+      : penFromMax === 0 ? 'Exactly at the band maximum'
+      : 'Below the band maximum';
 
-    const pct = v => v == null ? '—' : `${v.toFixed(1)}%`;
+    const pct = v => v == null ? '—' : `${v > 0 ? '+' : ''}${v.toFixed(1)}%`;
+    const pctPlain = v => v == null ? '—' : `${v.toFixed(1)}%`;
     const badge = (v, lo, hi) => v == null ? '' : (v < lo ? 'style="color:var(--min)"' : v > hi ? 'style="color:var(--max)"' : 'style="color:var(--accent)"');
 
     let replacementBlock = '';
@@ -676,8 +686,12 @@ function initRecruiterTool() {
         <div class="panel kpi"><div class="label">Sample Size</div><div class="value">${s.n}</div></div>
       </div>
       <div class="kpis">
-        <div class="panel kpi"><div class="label">Compa-Ratio</div><div class="value" ${badge(compaRatio, 90, 110)}>${pct(compaRatio)}</div><div class="who">${esc(compaNote)}</div></div>
-        <div class="panel kpi"><div class="label">Range Penetration</div><div class="value" ${badge(rangePen, 0, 100)}>${pct(rangePen)}</div><div class="who">${esc(penNote)}</div></div>
+        <div class="panel kpi"><div class="label">Compa-Ratio</div><div class="value" ${badge(compaRatio, 90, 110)}>${pctPlain(compaRatio)}</div><div class="who">${esc(compaNote)}</div></div>
+      </div>
+      <div class="kpis" style="margin-top:12px;">
+        <div class="panel kpi"><div class="label">Penetration from Min</div><div class="value" ${badge(penFromMin, 0, 1e9)}>${pct(penFromMin)}</div><div class="who">${esc(penFromMinNote)}</div></div>
+        <div class="panel kpi"><div class="label">Penetration from Average</div><div class="value" ${badge(penFromAvg, 0, 1e9)}>${pct(penFromAvg)}</div><div class="who">${esc(penFromAvgNote)}</div></div>
+        <div class="panel kpi"><div class="label">Penetration from Max</div><div class="value" ${badge(penFromMax, -1e9, 0)}>${pct(penFromMax)}</div><div class="who">${esc(penFromMaxNote)}</div></div>
       </div>
       <div class="foot" style="padding:12px 0 0;">Based on ${s.n} employee(s) with valid ${esc(mLabel)} in ${esc(desig)}${dept ? ' · ' + esc(dept) : ''}${band ? ' · Band ' + esc(band) : ''}${loc ? ' · ' + esc(loc) : ' · All Locations'}.</div>`;
   };
