@@ -75,6 +75,7 @@
   thead th { font-size: 10.5px; color: var(--text); font-weight: 700; cursor: pointer; user-select: none; position: sticky; top: 0; background: var(--head); z-index: 1; text-transform: uppercase; letter-spacing: .01em; padding-left: 4px; padding-right: 4px; }
   th.sorted::after { content: " ▾"; } th.sorted.asc::after { content: " ▴"; }
   tbody tr { cursor: pointer; } tbody tr:hover { background: var(--surface-2); }
+  tbody tr.selected-row { background: var(--surface-2); box-shadow: inset 3px 0 0 var(--accent); }
   td:first-child { font-weight: 600; }
   tfoot { box-shadow: 0 -8px 0 var(--surface); }
   tfoot td { position: sticky; bottom: 0; background: var(--head); font-weight: 700; font-size: 13px; border-bottom: 0; padding-top: 12px; overflow: hidden; }
@@ -177,7 +178,7 @@
 
     <section class="panel">
       <div class="phead">
-        <h2>Average Annual Gross Salary by Total Experience</h2>
+        <h2 id="chartTitle">Average Annual Gross Salary by Total Experience</h2>
       </div>
       <div class="tablewrap" id="chart"></div>
       <div class="foot" id="chartFoot"></div>
@@ -251,7 +252,7 @@ const BUCKETS = (() => {
 })();
 
 const state = { data: [], filters: {}, search: '', groupBy: 'desig', metric: 'gross', fmt: 'full', agg: 'sum',
-  sortKey: 'group', sortAsc: true, summary: [], tenureSource: '', showBand: false };
+  sortKey: 'group', sortAsc: true, summary: [], tenureSource: '', showBand: false, chartFilterGroup: null };
 const $ = id => document.getElementById(id);
 const norm = s => String(s).toLowerCase().replace(/\s+/g, ' ').trim();
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -408,7 +409,7 @@ function buildFilters() {
 }
 
 $('groupBy').innerHTML = GROUPS.map(g => `<option value="${g.key}">${g.label}</option>`).join('');
-$('groupBy').onchange = e => { state.groupBy = e.target.value; state.sortKey = 'group'; state.sortAsc = true; render(); };
+$('groupBy').onchange = e => { state.groupBy = e.target.value; state.sortKey = 'group'; state.sortAsc = true; state.chartFilterGroup = null; render(); };
 $('metricSeg').innerHTML = METRICS.map(m => `<button data-k="${m.key}">${m.label}</button>`).join('');
 $('metricSeg').onclick = e => { const k = e.target.dataset.k; if (k) { state.metric = k; render(); } };
 $('fmtSeg').onclick = e => { const k = e.target.dataset.f; if (k) { state.fmt = k; render(); } };
@@ -455,7 +456,9 @@ function render() {
     <div class="panel kpi max"><div class="label">Maximum ${mLabel}</div><div class="value" title="${inrFull(all.max)}">${kpiFmt(all.max)}</div><div class="who">${all.maxEmp ? esc(all.maxEmp.desig) : '—'}</div></div>`;
 
   renderTable(rows, all);
-  renderChart(rows);
+  const g = state.groupBy;
+  const chartRows = (state.chartFilterGroup != null) ? rows.filter(r => (r[g] || '(blank)') === state.chartFilterGroup) : rows;
+  renderChart(chartRows);
 }
 
 function renderTable(rows, all) {
@@ -502,8 +505,14 @@ function renderTable(rows, all) {
     if (state.sortKey === k) state.sortAsc = !state.sortAsc; else { state.sortKey = k; state.sortAsc = k === 'group'; }
     render();
   });
-  $('tableArea').querySelectorAll('tbody tr').forEach(tr => tr.onclick = () => {
-    const s = state.summary[+tr.dataset.i]; openDrawer(`${gLabel}: ${s.group}`, s);
+  $('tableArea').querySelectorAll('tbody tr').forEach(tr => {
+    const s = state.summary[+tr.dataset.i];
+    tr.classList.toggle('selected-row', state.chartFilterGroup != null && s.group === state.chartFilterGroup);
+    tr.onclick = () => {
+      state.chartFilterGroup = (state.chartFilterGroup === s.group) ? null : s.group;
+      render();
+    };
+    tr.ondblclick = () => openDrawer(`${gLabel}: ${s.group}`, s);
   });
 
   const excluded = rows.length - all.n;
@@ -513,13 +522,20 @@ function renderTable(rows, all) {
 function renderChart(rows) {
   const m = state.metric, mLabel = label(METRICS, m);
 
+  const g = state.groupBy, gLabel = label(GROUPS, g);
+  if (state.chartFilterGroup != null) {
+    $('chartTitle').textContent = `Average Annual Gross Salary by Total Experience — ${gLabel}: ${state.chartFilterGroup}`;
+  } else {
+    $('chartTitle').textContent = 'Average Annual Gross Salary by Total Experience';
+  }
+  $('chartFoot').textContent = '';
+
   const data = BUCKETS.map(([b]) => {
     const s = stats(rows.filter(r => r.tenure === b), m);
     const avgAnnual = s.avg != null ? s.avg * 12 : null;
     return { b, s, count: s.count, avgAnnual };
   });
   const noTenure = rows.filter(r => !r.tenure).length;
-  $('chartFoot').textContent = '';
 
   $('chart').innerHTML = `<table><thead><tr>
       <th style="text-align:left">Experience</th><th>EMP Count</th><th>Average</th>
