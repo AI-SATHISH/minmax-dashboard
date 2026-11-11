@@ -210,7 +210,7 @@
           <h2 id="densityTitle">Salary Density (Pay Concentration)</h2>
         </div>
         <div class="tablewrap tablewrap-fill" id="densityTable"></div>
-        <div class="foot" id="densityFoot">100% stacked bar per designation: Below avg −10% / Within ±10% (density) / Above avg +10%, as a share of that group's employees. Sorted by green % ascending — scattered-pay designations sit at the top. Long green bar = dense pay; large blue share = underpay/equity risk; large orange share = overpay/cost risk.</div>
+        <div class="foot" id="densityFoot"></div>
       </section>
     </div>
   </div>
@@ -486,7 +486,9 @@ function render() {
     <div class="panel kpi max"><div class="label">Maximum ${mLabel}</div><div class="value" title="${inrFull(all.max)}">${kpiFmt(all.max)}</div><div class="who">${all.maxEmp ? esc(all.maxEmp.desig) : '—'}</div></div>`;
 
   const g = state.groupBy;
-  const tableRows = (state.tableFilterBucket != null) ? rows.filter(r => r.tenure === state.tableFilterBucket) : rows;
+  const tableRows = rows.filter(r =>
+    (state.tableFilterBucket == null || r.tenure === state.tableFilterBucket) &&
+    (state.chartFilterGroup == null || (r[g] || '(blank)') === state.chartFilterGroup));
   const tableAll = stats(tableRows, m);
   renderTable(tableRows, tableAll);
   const chartRows = (state.chartFilterGroup != null) ? rows.filter(r => (r[g] || '(blank)') === state.chartFilterGroup) : rows;
@@ -766,7 +768,7 @@ function initRecruiterTool() {
     state.hireType = t;
     [...$('hireTypeSeg').children].forEach(b => b.classList.toggle('on', b.dataset.t === t));
     $('rEmpIdWrap').style.display = t === 'replacement' ? '' : 'none';
-    $('rSalaryLabelText').textContent = t === 'replacement' ? 'Proposed / Actual Salary (optional — defaults to current pay)' : 'Proposed / Actual Salary';
+    $('rSalaryLabelText').textContent = 'Proposed / Actual Salary';
     $('recruiterResult').innerHTML = '';
   };
 
