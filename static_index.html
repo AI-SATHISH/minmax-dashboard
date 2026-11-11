@@ -96,6 +96,8 @@
   td:first-child { font-weight: 600; }
   tfoot { box-shadow: 0 -8px 0 var(--surface); }
   tfoot td { background: var(--head); font-weight: 700; font-size: 13px; border-bottom: 0; padding-top: 12px; overflow: hidden; }
+  #tableTotalWrap table { margin: 0; }
+  #tableTotalWrap td { background: var(--head); font-weight: 700; font-size: 13px; padding: 10px 6px; overflow: hidden; border-top: 1px solid var(--border); }
   td.min { color: var(--min); font-weight: 600; } td.max { color: var(--max); font-weight: 600; }
   td.rangecell { min-width: 140px; width: 22%; }
   .range { position: relative; height: 14px; }
@@ -190,6 +192,7 @@
         <label class="sub">Group by <select id="groupBy"></select></label>
       </div>
       <div class="tablewrap" id="tableArea"><div class="status">Loading data…</div></div>
+      <div id="tableTotalWrap"></div>
       <div class="foot" id="foot"></div>
     </section>
 
@@ -549,14 +552,19 @@ function renderTable(rows, all) {
       <td title="${esc(s.group)}">${esc(s.group)}</td><td>${s.count}</td>${cell(s.min, 'min')}${cell(s.avg)}${cell(s.max, 'max')}
       ${ratioCell(compaRatio, 90, 110)}${ratioCell(minToAvg, 0, 1e9)}${ratioCell(avgToMax, 0, 1e9)}${ratioCell(maxToMin, 0, 1e9)}</tr>`;
     }).join('')
-  }</tbody><tfoot><tr><td>Total</td><td>${all.count}</td>${cell(all.min)}${cell(all.avg)}${cell(all.max)}${(() => {
+  }</tbody></table>`;
+
+  // Total row rendered OUTSIDE the scrollable table area so it's always
+  // visible without having to scroll through all the designations first.
+  $('tableTotalWrap').innerHTML = `<table><tbody><tr class="total-row-fixed"><td>Total</td><td>${all.count}</td>${cell(all.min)}${cell(all.avg)}${cell(all.max)}${(() => {
     const mid = (all.min != null && all.max != null) ? (all.min + all.max) / 2 : null;
     const compaRatio = (mid && all.avg != null) ? (all.avg / mid) * 100 : null;
     const minToAvg = (all.min != null && all.min > 0 && all.avg != null) ? ((all.avg - all.min) / all.min) * 100 : null;
     const avgToMax = (all.avg != null && all.avg > 0 && all.max != null) ? ((all.max - all.avg) / all.avg) * 100 : null;
     const maxToMin = (all.min != null && all.min > 0 && all.max != null) ? ((all.max - all.min) / all.min) * 100 : null;
     return `${ratioCell(compaRatio, 90, 110)}${ratioCell(minToAvg, 0, 1e9)}${ratioCell(avgToMax, 0, 1e9)}${ratioCell(maxToMin, 0, 1e9)}`;
-  })()}</tr></tfoot></table>`;
+  })()}</tr></tbody></table>`;
+
 
   $('tableArea').querySelectorAll('th[data-k]').forEach(th => th.onclick = () => {
     const k = th.dataset.k;
