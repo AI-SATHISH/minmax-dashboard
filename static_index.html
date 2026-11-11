@@ -930,9 +930,9 @@ function initRecruiterTool() {
         <div class="panel kpi">
           <div class="label">Penetration (vs Min / Average / Max)</div>
           <div class="value" style="display:flex; gap:14px; flex-wrap:wrap; font-size:0.85em;">
-            <span ${signBadge(penFromMin)}>Min: ${pct(penFromMin)}${penFromMin != null && penFromMin < 0 ? ' ⚠️' : ''}</span>
+            <span ${signBadge(penFromMin)}>Min: ${pct(penFromMin)}</span>${penFromMin != null && penFromMin < 0 ? '<span style="font-size:1.8em; line-height:1; margin-left:4px; color:var(--max); vertical-align:middle;" title="Underpaid — below the band minimum">⚠</span>' : ''}
             <span ${signBadge(penFromAvg)}>Avg: ${pct(penFromAvg)}</span>
-            <span ${signBadge(penFromMax)}>Max: ${pct(penFromMax)}${penFromMax != null && penFromMax > 0 ? ' ⚠️' : ''}</span>
+            <span ${signBadge(penFromMax)}>Max: ${pct(penFromMax)}</span>${penFromMax != null && penFromMax > 0 ? '<span style="font-size:1.8em; line-height:1; margin-left:4px; color:var(--max); vertical-align:middle;" title="Overpaid — above the band maximum">⚠</span>' : ''}
           </div>
           <div class="who">${esc(penFromMinNote)} · ${esc(penFromAvgNote)} · ${esc(penFromMaxNote)}</div>
         </div>
