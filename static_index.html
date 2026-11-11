@@ -647,10 +647,12 @@ function renderDensity(rows) {
     const belowRows = valid.filter(r => r[m] < lo);
     const aboveRows = valid.filter(r => r[m] > hi);
     const withinRows = valid.filter(r => r[m] >= lo && r[m] <= hi);
+    const segAvg = segRows => segRows.length ? segRows.reduce((a, r) => a + r[m], 0) / segRows.length : null;
     return {
       group, n, avg, belowRows, withinRows, aboveRows,
       belowPct: (belowRows.length / n) * 100, withinPct: (withinRows.length / n) * 100, abovePct: (aboveRows.length / n) * 100,
       below: belowRows.length, within: withinRows.length, above: aboveRows.length,
+      belowAvg: segAvg(belowRows), withinAvg: segAvg(withinRows), aboveAvg: segAvg(aboveRows),
     };
   }).filter(Boolean);
 
@@ -671,10 +673,11 @@ function renderDensity(rows) {
   const x = pct => LABEL_W + (pct / 100) * plotW;
 
   const COL_BELOW = '#3b82f6', COL_WITHIN = '#10b981', COL_ABOVE = '#f97316';
-  const seg = (x1, w, color, pct, count, segKey) => {
+  const seg = (x1, w, color, segAvg, count, segKey) => {
     if (w <= 0) return '';
-    const full = `${pct.toFixed(0)}% (${count})`;
-    const label = pct >= 14 ? full : pct >= 6 ? `${pct.toFixed(0)}%` : '';
+    const amt = segAvg != null ? fmt(segAvg) : '—';
+    const full = `${amt} (${count})`;
+    const label = w >= 90 ? full : w >= 45 ? amt : '';
     const text = label ? `<text x="${(x1 + w / 2).toFixed(1)}" y="0" dy="0.35em" text-anchor="middle" font-size="12" font-weight="700" fill="#000">${label}</text>` : '';
     return `<g class="density-seg" data-seg="${segKey}" style="cursor:pointer;"><rect x="${x1.toFixed(1)}" y="${-barH / 2}" width="${w.toFixed(1)}" height="${barH}" fill="${color}"/>${text}</g>`;
   };
@@ -689,9 +692,9 @@ function renderDensity(rows) {
       <text x="${LABEL_W - 10}" y="${rowY + barH / 2}" dy="0.35em" text-anchor="end" font-size="13" font-weight="600" fill="var(--text)">${esc(s.group)}</text>
       <rect x="${x0.toFixed(1)}" y="${rowY}" width="${(x100 - x0).toFixed(1)}" height="${barH}" fill="var(--surface)" ${selected ? 'stroke="var(--accent)" stroke-width="2"' : ''}/>
       <g transform="translate(0, ${rowY + barH / 2})">
-        ${seg(x0, xBelow - x0, COL_BELOW, s.belowPct, s.below, 'below')}
-        ${seg(xBelow, xWithin - xBelow, COL_WITHIN, s.withinPct, s.within, 'within')}
-        ${seg(xWithin, x100 - xWithin, COL_ABOVE, s.abovePct, s.above, 'above')}
+        ${seg(x0, xBelow - x0, COL_BELOW, s.belowAvg, s.below, 'below')}
+        ${seg(xBelow, xWithin - xBelow, COL_WITHIN, s.withinAvg, s.within, 'within')}
+        ${seg(xWithin, x100 - xWithin, COL_ABOVE, s.aboveAvg, s.above, 'above')}
       </g>
     </g>`;
   });
