@@ -349,7 +349,7 @@ def _parse_number(v):
 
 # EMP IDs to always exclude from the dashboard (not from the Zoho source
 # sheet itself) — e.g. duplicate/test records flagged by HR for removal.
-EXCLUDED_EMP_IDS = {"1501", "1502"}
+EXCLUDED_EMP_IDS = {"1501", "1502", "5034", "4674", "6311", "6319", "6343", "6891", "6897", "7083", "7086", "7095"}
 
 
 def _is_excluded(cells, empid_col_idx):
