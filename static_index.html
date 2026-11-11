@@ -930,13 +930,18 @@ function initRecruiterTool() {
         <div class="panel kpi">
           <div class="label">Penetration (vs Min / Average / Max)</div>
           <div class="value" style="display:flex; gap:14px; flex-wrap:wrap; font-size:0.85em;">
-            <span ${signBadge(penFromMin)}>Min: ${pct(penFromMin)}</span>${penFromMin != null && penFromMin < 0 ? '<span style="font-size:1.8em; line-height:1; margin-left:4px; color:var(--max); vertical-align:middle;" title="Underpaid — below the band minimum">⚠</span>' : ''}
+            <span ${signBadge(penFromMin)}>Min: ${pct(penFromMin)}</span>
             <span ${signBadge(penFromAvg)}>Avg: ${pct(penFromAvg)}</span>
-            <span ${signBadge(penFromMax)}>Max: ${pct(penFromMax)}</span>${penFromMax != null && penFromMax > 0 ? '<span style="font-size:1.8em; line-height:1; margin-left:4px; color:var(--max); vertical-align:middle;" title="Overpaid — above the band maximum">⚠</span>' : ''}
+            <span ${signBadge(penFromMax)}>Max: ${pct(penFromMax)}</span>
           </div>
           <div class="who">${esc(penFromMinNote)} · ${esc(penFromAvgNote)} · ${esc(penFromMaxNote)}</div>
         </div>
       </div>
+      ${(penFromMin != null && penFromMin < 0) || (penFromMax != null && penFromMax > 0) ? `
+      <div style="display:flex; align-items:center; gap:10px; margin-top:10px; padding:10px 14px; border:1px solid var(--max); border-radius:8px; background:var(--accent-soft);">
+        <span style="font-size:2em; line-height:1; color:var(--max);">⚠</span>
+        <span style="font-weight:600;">${penFromMax != null && penFromMax > 0 ? 'Overpaid — this salary is above the band maximum.' : ''}${(penFromMin != null && penFromMin < 0 && penFromMax != null && penFromMax > 0) ? ' ' : ''}${penFromMin != null && penFromMin < 0 ? 'Underpaid — this salary is below the band minimum.' : ''}</span>
+      </div>` : ''}
       <div class="foot" style="padding:12px 0 0;">Based on ${s.n} employee(s) with valid ${esc(mLabel)} in ${esc(desig)}${dept ? ' · ' + esc(dept) : ''}${band ? ' · Band ' + esc(band) : ''}${loc ? ' · ' + esc(loc) : ' · All Locations'}.</div>`;
   };
 }
