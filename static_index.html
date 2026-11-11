@@ -581,10 +581,11 @@ function renderChart(rows) {
   const m = state.metric, mLabel = label(METRICS, m);
 
   const g = state.groupBy, gLabel = label(GROUPS, g);
+  const annualTitle = `Average Annual ${mLabel.replace(/^Annual\s+/i, '')} by Total Experience`;
   if (state.chartFilterGroup != null) {
-    $('chartTitle').textContent = `Average Annual Gross Salary by Total Experience — ${gLabel}: ${state.chartFilterGroup}`;
+    $('chartTitle').textContent = `${annualTitle} — ${gLabel}: ${state.chartFilterGroup}`;
   } else {
-    $('chartTitle').textContent = 'Average Annual Gross Salary by Total Experience';
+    $('chartTitle').textContent = annualTitle;
   }
   $('chartFoot').textContent = '';
 
