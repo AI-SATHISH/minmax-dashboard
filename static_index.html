@@ -664,7 +664,7 @@ function renderDensity(rows) {
     const n = valid.length;
     if (!n) return null;
     const avg = valid.reduce((a, r) => a + r[m], 0) / n;
-    const lo = avg * 0.9, hi = avg * 1.1;
+    const lo = avg * 0.85, hi = avg * 1.15;
     const belowRows = valid.filter(r => r[m] < lo);
     const aboveRows = valid.filter(r => r[m] > hi);
     const withinRows = valid.filter(r => r[m] >= lo && r[m] <= hi);
@@ -727,9 +727,9 @@ function renderDensity(rows) {
 
   $('densityTable').innerHTML = `
     <div style="padding:10px 16px 4px; display:flex; gap:20px; flex-wrap:wrap; align-items:center; font-size:12px; color:var(--muted);">
-      <span style="display:inline-flex; align-items:center; gap:6px;"><span style="width:14px;height:14px;background:${COL_BELOW};display:inline-block;border-radius:3px;"></span>Below −10%</span>
-      <span style="display:inline-flex; align-items:center; gap:6px;"><span style="width:14px;height:14px;background:${COL_WITHIN};display:inline-block;border-radius:3px;"></span>Within ±10%</span>
-      <span style="display:inline-flex; align-items:center; gap:6px;"><span style="width:14px;height:14px;background:${COL_ABOVE};display:inline-block;border-radius:3px;"></span>Above +10%</span>
+      <span style="display:inline-flex; align-items:center; gap:6px;"><span style="width:14px;height:14px;background:${COL_BELOW};display:inline-block;border-radius:3px;"></span>Below −15%</span>
+      <span style="display:inline-flex; align-items:center; gap:6px;"><span style="width:14px;height:14px;background:${COL_WITHIN};display:inline-block;border-radius:3px;"></span>Within ±15%</span>
+      <span style="display:inline-flex; align-items:center; gap:6px;"><span style="width:14px;height:14px;background:${COL_ABOVE};display:inline-block;border-radius:3px;"></span>Above +15%</span>
     </div>
     <svg viewBox="0 0 ${VBW} ${totalH}" preserveAspectRatio="xMidYMid meet" style="width:100%; height:auto; display:block;">
       ${gridSvg}
