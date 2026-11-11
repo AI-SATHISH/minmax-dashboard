@@ -225,7 +225,7 @@
         <label id="rEmpIdWrap" style="display:none">Replacing EMP ID<input type="text" id="rEmpId" placeholder="e.g. EIN 5286"></label>
         <label>Location<select id="rLoc"><option value="">All Locations</option></select></label>
         <label>Department<select id="rDept"><option value="">Select…</option></select></label>
-        <label>Sub Band<select id="rBand"><option value="">Select…</option></select></label>
+        <label>Band<select id="rBand"><option value="">Select…</option></select></label>
         <label>Designation<select id="rDesig"><option value="">Select…</option></select></label>
         <label>Salary metric<select id="rMetric"></select></label>
         <label id="rSalaryLabel"><span id="rSalaryLabelText">Proposed / Actual Salary</span><input type="number" id="rSalary" placeholder="e.g. 65000"></label>
@@ -804,7 +804,7 @@ function initRecruiterTool() {
       if (!data.found) return;
       if (data.location) { $('rLoc').value = data.location; refreshDept(); }
       if (data.department) { $('rDept').value = data.department; refreshBand(); }
-      if (data.subBand || data.band) { $('rBand').value = String(data.subBand || data.band); refreshDesig(); }
+      if (data.band != null) { $('rBand').value = String(data.band); refreshDesig(); }
       if (data.designation) { $('rDesig').value = data.designation; }
     } catch (e) { /* silent — Calculate will re-validate the EMP ID anyway */ }
   };
@@ -822,12 +822,12 @@ function initRecruiterTool() {
   }
   function refreshBand() {
     const loc = $('rLoc').value, dept = $('rDept').value;
-    const opts = uniq('sub', d => (!loc || d.loc === loc) && (!dept || d.dept === dept));
+    const opts = uniq('band', d => (!loc || d.loc === loc) && (!dept || d.dept === dept));
     $('rBand').innerHTML = '<option value="">Select…</option>' + opts.map(o => `<option>${esc(o)}</option>`).join('');
   }
   function refreshDesig() {
     const loc = $('rLoc').value, dept = $('rDept').value, band = $('rBand').value;
-    const opts = uniq('desig', d => (!loc || d.loc === loc) && (!dept || d.dept === dept) && (!band || String(d.sub) === band));
+    const opts = uniq('desig', d => (!loc || d.loc === loc) && (!dept || d.dept === dept) && (!band || String(d.band) === band));
     $('rDesig').innerHTML = '<option value="">Select…</option>' + opts.map(o => `<option>${esc(o)}</option>`).join('');
   }
 
@@ -874,7 +874,7 @@ function initRecruiterTool() {
     if (!actual || actual <= 0) { out.innerHTML = '<div class="status err">Enter a valid proposed/actual salary.</div>'; return; }
 
     const matches = state.data.filter(d =>
-      (!loc || d.loc === loc) && (!dept || d.dept === dept) && (!band || String(d.sub) === band) && d.desig === desig);
+      (!loc || d.loc === loc) && (!dept || d.dept === dept) && (!band || String(d.band) === band) && d.desig === desig);
     const s = stats(matches, m);
 
     if (!s.n) {
