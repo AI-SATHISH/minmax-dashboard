@@ -528,6 +528,17 @@ function renderTable(rows, all) {
   state.summary = anyValid ? summary.filter(s => s.n > 0) : summary;
 
   const { sortKey: sk, sortAsc: asc } = state;
+
+  // Precompute the 4 ratio columns on each summary row so they can be sorted
+  // the same way as the base columns (Comp Ratio, Min→Avg%, Avg→Max%, Max→Min%).
+  state.summary.forEach(s => {
+    const mid = (s.min != null && s.max != null) ? (s.min + s.max) / 2 : null;
+    s.compaRatio = (mid && s.avg != null) ? (s.avg / mid) * 100 : null;
+    s.minToAvg = (s.min != null && s.min > 0 && s.avg != null) ? ((s.avg - s.min) / s.min) * 100 : null;
+    s.avgToMax = (s.avg != null && s.avg > 0 && s.max != null) ? ((s.max - s.avg) / s.avg) * 100 : null;
+    s.maxToMin = (s.min != null && s.min > 0 && s.max != null) ? ((s.max - s.min) / s.min) * 100 : null;
+  });
+
   state.summary.sort((a, b) => {
     const r = sk === 'group' ? natural(a.group, b.group) : (a[sk] ?? -Infinity) - (b[sk] ?? -Infinity);
     return asc ? r : -r;
@@ -535,7 +546,8 @@ function renderTable(rows, all) {
 
   if (!state.summary.length) { $('tableArea').innerHTML = '<div class="empty">No employees match these filters.</div>'; $('foot').textContent = ''; return; }
 
-  const cols = [['group', gLabel], ['count', 'Count'], ['min', 'Min'], ['avg', 'Average'], ['max', 'Max']];
+  const cols = [['group', gLabel], ['count', 'Count'], ['min', 'Min'], ['avg', 'Average'], ['max', 'Max'],
+    ['compaRatio', 'Comp Ratio'], ['minToAvg', 'Min→Avg %'], ['avgToMax', 'Avg→Max %'], ['maxToMin', 'Max→Min %']];
   const cell = (v, cls = '') => `<td class="${cls}" title="${inrFull(v)}">${fmt(v)}</td>`;
   const pct = v => (v == null || isNaN(v)) ? '—' : `${v.toFixed(1)}%`;
   const ratioCell = (v, lo, hi) => {
@@ -543,16 +555,11 @@ function renderTable(rows, all) {
     return `<td style="${color ? `color:${color};font-weight:600` : ''}">${pct(v)}</td>`;
   };
 
-  $('tableArea').innerHTML = `<table><thead><tr>${cols.map(([k, l]) => `<th data-k="${k}" class="${k === sk ? 'sorted' + (asc ? ' asc' : '') : ''}">${l}</th>`).join('')}<th style="cursor:default" title="Average ÷ Band Midpoint">Comp Ratio</th><th style="cursor:default" title="How much Average is above Min">Min→Avg %</th><th style="cursor:default" title="How much Max is above Average">Avg→Max %</th><th style="cursor:default" title="How much Max is above Min">Max→Min %</th></tr></thead><tbody>${
+  $('tableArea').innerHTML = `<table><thead><tr>${cols.map(([k, l], i) => `<th data-k="${k}" class="${k === sk ? 'sorted' + (asc ? ' asc' : '') : ''}"${i >= 5 ? ' title="Click to sort"' : ''}>${l}</th>`).join('')}</tr></thead><tbody>${
     state.summary.map((s, i) => {
-      const mid = (s.min != null && s.max != null) ? (s.min + s.max) / 2 : null;
-      const compaRatio = (mid && s.avg != null) ? (s.avg / mid) * 100 : null;
-      const minToAvg = (s.min != null && s.min > 0 && s.avg != null) ? ((s.avg - s.min) / s.min) * 100 : null;
-      const avgToMax = (s.avg != null && s.avg > 0 && s.max != null) ? ((s.max - s.avg) / s.avg) * 100 : null;
-      const maxToMin = (s.min != null && s.min > 0 && s.max != null) ? ((s.max - s.min) / s.min) * 100 : null;
       return `<tr data-i="${i}">
       <td title="${esc(s.group)}">${esc(s.group)}</td><td>${s.count}</td>${cell(s.min, 'min')}${cell(s.avg)}${cell(s.max, 'max')}
-      ${ratioCell(compaRatio, 90, 110)}${ratioCell(minToAvg, 0, 1e9)}${ratioCell(avgToMax, 0, 1e9)}${ratioCell(maxToMin, 0, 1e9)}</tr>`;
+      ${ratioCell(s.compaRatio, 90, 110)}${ratioCell(s.minToAvg, 0, 1e9)}${ratioCell(s.avgToMax, 0, 1e9)}${ratioCell(s.maxToMin, 0, 1e9)}</tr>`;
     }).join('')
   }</tbody></table>`;
 
