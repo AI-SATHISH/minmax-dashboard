@@ -558,11 +558,7 @@ function renderTable(rows, all) {
 
   // Total row rendered OUTSIDE the scrollable table area so it's always
   // visible without having to scroll through all the designations first.
-  $('tableTotalWrap').innerHTML = `<table><tbody><tr class="total-row-fixed"><td>Total</td><td>${all.count}</td>${cell(all.min)}${cell(all.avg)}${cell(all.max)}${(() => {
-    const mid = (all.min != null && all.max != null) ? (all.min + all.max) / 2 : null;
-    const compaRatio = (mid && all.avg != null) ? (all.avg / mid) * 100 : null;
-    return `${ratioCell(compaRatio, 90, 110)}<td></td><td></td><td></td>`;
-  })()}</tr></tbody></table>`;
+  $('tableTotalWrap').innerHTML = `<table><tbody><tr class="total-row-fixed"><td>Total</td><td>${all.count}</td>${cell(all.min)}${cell(all.avg)}${cell(all.max)}<td></td><td></td><td></td><td></td></tr></tbody></table>`;
 
 
   $('tableArea').querySelectorAll('th[data-k]').forEach(th => th.onclick = () => {
