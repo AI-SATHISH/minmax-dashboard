@@ -5,6 +5,7 @@ endpoint matching the Google Apps Script getData() JSON shape,
 sourced live from Zoho Sheet via OAuth refresh-token API.
 """
 import os
+import time
 import requests
 from datetime import datetime, timezone
 from functools import wraps
@@ -20,6 +21,12 @@ ZOHO_ACCOUNTS_DOMAIN = os.environ.get("ZOHO_ACCOUNTS_DOMAIN", "https://accounts.
 ZOHO_SHEET_API_DOMAIN = os.environ.get("ZOHO_SHEET_API_DOMAIN", "https://sheet.zoho.in")
 ZOHO_WORKSHEET_ID = os.environ["ZOHO_WORKSHEET_ID"]
 ZOHO_SHEET_NAME = os.environ.get("ZOHO_SHEET_NAME", "Active")
+
+# In-memory per-sheet cache: sheet_name -> (fetched_at, col_to_header, row_details).
+# Avoids re-pulling the full worksheet from Zoho on every request — this was
+# the main cause of slow EMP ID lookups/Calculate clicks in the Replacement flow.
+_SHEET_CACHE = {}
+SHEET_CACHE_TTL_SECONDS = 120
 
 ADMIN_USER = os.environ.get("ADMIN_USER", "Hradmin")
 ADMIN_PASS = os.environ.get("ADMIN_PASS", "")
@@ -231,8 +238,18 @@ def api_role():
 def _fetch_sheet_rows(sheet_name=None):
     """Fetch the header row and every data row from one worksheet in the Zoho
     workbook. Returns (col_to_header, row_details) — the raw building blocks
-    shared by /api/data and /api/lookup-emp."""
+    shared by /api/data and /api/lookup-emp.
+
+    Cached for a short TTL per sheet, since pulling 1800+ rows from Zoho's
+    live API on every single request (EMP ID lookup included) was the main
+    cause of slow load times — especially since the Replacement flow can
+    trigger this up to 3x per click (Active, Attrition, Entire Attrition),
+    and the frontend itself calls lookup twice (on blur + on Calculate)."""
     sheet_name = sheet_name or ZOHO_SHEET_NAME
+    cached = _SHEET_CACHE.get(sheet_name)
+    if cached and (time.time() - cached[0]) < SHEET_CACHE_TTL_SECONDS:
+        return cached[1], cached[2]
+
     token = get_access_token()
 
     # Step 1: read the header row to map column index -> header name.
@@ -273,6 +290,7 @@ def _fetch_sheet_rows(sheet_name=None):
     body_resp.raise_for_status()
     body_data = body_resp.json()
     row_details = body_data.get("range_details", [])
+    _SHEET_CACHE[sheet_name] = (time.time(), col_to_header, row_details)
     return col_to_header, row_details
 
 
