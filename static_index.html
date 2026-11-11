@@ -585,10 +585,13 @@ function renderTable(rows, all) {
 }
 
 function renderChart(rows) {
-  const m = state.metric, mLabel = label(METRICS, m);
+  // This panel always shows CTC specifically (per user instruction), independent
+  // of whichever metric is selected for the Gross Monthly table. CTC is already
+  // an annual figure in the source data, so it is NOT multiplied by 12 again.
+  const m = 'ctc', mLabel = 'CTC';
 
   const g = state.groupBy, gLabel = label(GROUPS, g);
-  const annualTitle = `Average Annual ${mLabel.replace(/^Annual\s+/i, '')} by Total Experience`;
+  const annualTitle = `Average Annual ${mLabel} by Total Experience`;
   if (state.chartFilterGroup != null) {
     $('chartTitle').textContent = `${annualTitle} — ${gLabel}: ${state.chartFilterGroup}`;
   } else {
@@ -598,7 +601,7 @@ function renderChart(rows) {
 
   const data = BUCKETS.map(([b]) => {
     const s = stats(rows.filter(r => r.tenure === b), m);
-    const avgAnnual = s.avg != null ? s.avg * 12 : null;
+    const avgAnnual = s.avg != null ? s.avg : null;
     return { b, s, count: s.count, avgAnnual };
   });
   const noTenure = rows.filter(r => !r.tenure).length;
