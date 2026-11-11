@@ -220,7 +220,7 @@
       <h2>Comp Ratio vs Average Salary</h2>
     </div>
     <div id="compRatioChart"></div>
-    <div class="foot" id="compRatioFoot">Each dot is one EMPLOYEE. X-axis = their designation's average salary, Y-axis = their individual Comp Ratio % (own salary ÷ designation average × 100). Dashed line = 100% (exactly at the designation average). <span style="color:var(--min);font-weight:600">Green</span> = below 90% (underpaid vs peers) · <span style="font-weight:600">Pink</span> = 90–110% (normal) · <span style="color:var(--max);font-weight:600">Orange</span> = above 110% (overpaid vs peers). Hover a dot for details.</div>
+    <div class="foot" id="compRatioFoot">Each dot is one EMPLOYEE. X-axis = their actual salary, Y-axis = their individual Comp Ratio % (own salary ÷ designation average × 100). Dashed line = 100% (exactly at the designation average). <span style="color:var(--min);font-weight:600">Green</span> = below 90% (underpaid vs peers) · <span style="font-weight:600">Pink</span> = 90–110% (normal) · <span style="color:var(--max);font-weight:600">Orange</span> = above 110% (overpaid vs peers). Hover a dot for details.</div>
   </section>
 
   <section class="panel" style="margin-top:14px;" id="recruiterPanel">
@@ -787,7 +787,7 @@ function renderCompRatioChart(rows) {
   const W = 900, H = 380, padL = 70, padR = 20, padT = 20, padB = 50;
   const plotW = W - padL - padR, plotH = H - padT - padB;
 
-  const xs = points.map(p => p.groupAvg);
+  const xs = points.map(p => p.salary);
   const ys = points.map(p => p.compaRatio);
   const xMin = 0, xMax = Math.max(...xs) * 1.05;
   const yMin = 0, yMax = Math.max(150, Math.max(...ys) * 1.1);
@@ -812,7 +812,7 @@ function renderCompRatioChart(rows) {
   }
 
   const dots = points.map(p => {
-    const cx = x(p.groupAvg), cy = y(p.compaRatio);
+    const cx = x(p.salary), cy = y(p.compaRatio);
     return `<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="3.5" fill="${color(p.compaRatio)}" fill-opacity="0.55" stroke="${color(p.compaRatio)}" stroke-width="1">
       <title>${esc(p.group)}: Salary ${inrFull(p.salary)}, Group Avg ${inrFull(p.groupAvg)}, Comp Ratio ${p.compaRatio.toFixed(1)}%</title>
     </circle>`;
@@ -824,7 +824,7 @@ function renderCompRatioChart(rows) {
     <text x="${padL + plotW - 4}" y="${y(100) - 6}" text-anchor="end" font-size="11" font-weight="600" fill="var(--text)">100%</text>
     <line x1="${padL}" y1="${padT}" x2="${padL}" y2="${padT + plotH}" stroke="var(--text)"/>
     <line x1="${padL}" y1="${padT + plotH}" x2="${padL + plotW}" y2="${padT + plotH}" stroke="var(--text)"/>
-    <text x="${padL + plotW / 2}" y="${H - 6}" text-anchor="middle" font-size="12" font-weight="600" fill="var(--text)">Designation Average Salary</text>
+    <text x="${padL + plotW / 2}" y="${H - 6}" text-anchor="middle" font-size="12" font-weight="600" fill="var(--text)">Actual Salary</text>
     <text x="14" y="${padT + plotH / 2}" text-anchor="middle" font-size="12" font-weight="600" fill="var(--text)" transform="rotate(-90, 14, ${padT + plotH / 2})">Individual Comp Ratio %</text>
     ${dots}
   </svg>`;
