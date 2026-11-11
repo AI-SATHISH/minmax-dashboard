@@ -588,12 +588,12 @@ function renderTable(rows, all) {
 }
 
 function renderChart(rows) {
-  // This panel always shows Gross Monthly (annualized via ×12), independent of
-  // whichever metric is selected for the Gross Monthly table.
+  // This panel always shows plain Gross Monthly (not CTC, not annualized),
+  // independent of whichever metric is selected for the Gross Monthly table.
   const m = 'gross', mLabel = 'Gross Monthly';
 
   const g = state.groupBy, gLabel = label(GROUPS, g);
-  const annualTitle = `Average Annual ${mLabel} by Total Experience`;
+  const annualTitle = `Average ${mLabel} by Total Experience`;
   if (state.chartFilterGroup != null) {
     $('chartTitle').textContent = `${annualTitle} — ${gLabel}: ${state.chartFilterGroup}`;
   } else {
@@ -603,7 +603,7 @@ function renderChart(rows) {
 
   const data = BUCKETS.map(([b]) => {
     const s = stats(rows.filter(r => r.tenure === b), m);
-    const avgAnnual = s.avg != null ? s.avg * 12 : null;
+    const avgAnnual = s.avg != null ? s.avg : null;
     return { b, s, count: s.count, avgAnnual };
   });
   const noTenure = rows.filter(r => !r.tenure).length;
