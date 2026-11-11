@@ -471,23 +471,23 @@ function stats(rows, m) {
 const label = (list, k) => list.find(x => x.key === k).label;
 
 // ---- Render ----
-// Native 'dblclick' is unreliable on many mobile browsers (two taps don't
-// always coalesce into a dblclick event). This adds a manual double-tap
-// fallback (two touchend events within 400ms, same element) that calls the
-// same handler, alongside the existing desktop dblclick.
-function onDoubleClickOrTap(el, handler) {
-  el.ondblclick = handler;
-  let lastTap = 0;
-  el.addEventListener('touchend', (e) => {
-    const now = Date.now();
-    if (now - lastTap < 400) {
-      e.preventDefault();
-      handler(e);
-      lastTap = 0;
+// 3-stage click cycle, replacing single-click-filter + separate double-click
+// (which was unreliable on mobile): click 1 = filter to this row, click 2 on
+// the SAME row = open the details drawer, click 3 = clear filter / back to
+// normal. Clicking a DIFFERENT row always restarts the cycle at stage 1.
+function cycleClick(key, { isActive, applyFilter, clearFilter, showDrawer }) {
+  if (!isActive(key)) {
+    applyFilter(key);
+    state.clickStage = 1;
+  } else {
+    state.clickStage = (state.clickStage || 1) + 1;
+    if (state.clickStage === 2) {
+      showDrawer(key);
     } else {
-      lastTap = now;
+      clearFilter();
+      state.clickStage = 0;
     }
-  });
+  }
 }
 
 function render() {
@@ -595,11 +595,12 @@ function renderTable(rows, all) {
   $('tableArea').querySelectorAll('tbody tr').forEach(tr => {
     const s = state.summary[+tr.dataset.i];
     tr.classList.toggle('selected-row', state.chartFilterGroup != null && s.group === state.chartFilterGroup);
-    tr.onclick = () => {
-      state.chartFilterGroup = (state.chartFilterGroup === s.group) ? null : s.group;
-      render();
-    };
-    onDoubleClickOrTap(tr, () => openDrawer(`${gLabel}: ${s.group}`, s));
+    tr.onclick = () => cycleClick(s.group, {
+      isActive: grp => state.chartFilterGroup === grp,
+      applyFilter: grp => { state.chartFilterGroup = grp; render(); },
+      clearFilter: () => { state.chartFilterGroup = null; render(); },
+      showDrawer: () => openDrawer(`${gLabel}: ${s.group}`, s),
+    });
   });
 
   const excluded = rows.length - all.n;
@@ -638,11 +639,12 @@ function renderChart(rows) {
     }</tbody></table>`;
   $('chart').querySelectorAll('tbody tr').forEach(tr => {
     const d = data[+tr.dataset.i];
-    tr.onclick = () => {
-      state.tableFilterBucket = (state.tableFilterBucket === d.b) ? null : d.b;
-      render();
-    };
-    onDoubleClickOrTap(tr, () => openDrawer(`EXP Tenure: ${d.b}`, { ...d.s, group: d.b }));
+    tr.onclick = () => cycleClick(d.b, {
+      isActive: b => state.tableFilterBucket === b,
+      applyFilter: b => { state.tableFilterBucket = b; render(); },
+      clearFilter: () => { state.tableFilterBucket = null; render(); },
+      showDrawer: () => openDrawer(`EXP Tenure: ${d.b}`, { ...d.s, group: d.b }),
+    });
   });
 }
 
@@ -737,13 +739,14 @@ function renderDensity(rows) {
 
   $('densityTable').querySelectorAll('.density-row').forEach(gEl => {
     const grp = gEl.dataset.group;
-    gEl.onclick = () => {
-      state.chartFilterGroup = (state.chartFilterGroup === grp) ? null : grp;
-      render();
-    };
-    onDoubleClickOrTap(gEl, () => {
-      const s = summary.find(x => x.group === grp);
-      if (s) openDrawer(grp, stats([...s.belowRows, ...s.withinRows, ...s.aboveRows], m));
+    gEl.onclick = () => cycleClick(grp, {
+      isActive: g => state.chartFilterGroup === g,
+      applyFilter: g => { state.chartFilterGroup = g; render(); },
+      clearFilter: () => { state.chartFilterGroup = null; render(); },
+      showDrawer: () => {
+        const s = summary.find(x => x.group === grp);
+        if (s) openDrawer(grp, stats([...s.belowRows, ...s.withinRows, ...s.aboveRows], m));
+      },
     });
   });
 
@@ -753,17 +756,6 @@ function renderDensity(rows) {
       const rowEl = segEl.closest('.density-row');
       rowEl.onclick();
     };
-    onDoubleClickOrTap(segEl, (e) => {
-      e.stopPropagation();
-      const rowEl = segEl.closest('.density-row');
-      const grp = rowEl.dataset.group;
-      const s = summary.find(x => x.group === grp);
-      if (!s) return;
-      const segKey = segEl.dataset.seg;
-      const segRows = segKey === 'below' ? s.belowRows : segKey === 'above' ? s.aboveRows : s.withinRows;
-      const segLabel = segKey === 'below' ? 'Below' : segKey === 'above' ? 'Above' : 'Within';
-      openDrawer(`${grp} — ${segLabel}`, stats(segRows, m));
-    });
   });
 }
 function niceStep(raw) {
