@@ -471,6 +471,25 @@ function stats(rows, m) {
 const label = (list, k) => list.find(x => x.key === k).label;
 
 // ---- Render ----
+// Native 'dblclick' is unreliable on many mobile browsers (two taps don't
+// always coalesce into a dblclick event). This adds a manual double-tap
+// fallback (two touchend events within 400ms, same element) that calls the
+// same handler, alongside the existing desktop dblclick.
+function onDoubleClickOrTap(el, handler) {
+  el.ondblclick = handler;
+  let lastTap = 0;
+  el.addEventListener('touchend', (e) => {
+    const now = Date.now();
+    if (now - lastTap < 400) {
+      e.preventDefault();
+      handler(e);
+      lastTap = 0;
+    } else {
+      lastTap = now;
+    }
+  });
+}
+
 function render() {
   const m = state.metric, mLabel = label(METRICS, m);
   [...$('metricSeg').children].forEach(b => b.classList.toggle('on', b.dataset.k === m));
@@ -580,7 +599,7 @@ function renderTable(rows, all) {
       state.chartFilterGroup = (state.chartFilterGroup === s.group) ? null : s.group;
       render();
     };
-    tr.ondblclick = () => openDrawer(`${gLabel}: ${s.group}`, s);
+    onDoubleClickOrTap(tr, () => openDrawer(`${gLabel}: ${s.group}`, s));
   });
 
   const excluded = rows.length - all.n;
@@ -623,7 +642,7 @@ function renderChart(rows) {
       state.tableFilterBucket = (state.tableFilterBucket === d.b) ? null : d.b;
       render();
     };
-    tr.ondblclick = () => openDrawer(`EXP Tenure: ${d.b}`, { ...d.s, group: d.b });
+    onDoubleClickOrTap(tr, () => openDrawer(`EXP Tenure: ${d.b}`, { ...d.s, group: d.b }));
   });
 }
 
@@ -722,10 +741,10 @@ function renderDensity(rows) {
       state.chartFilterGroup = (state.chartFilterGroup === grp) ? null : grp;
       render();
     };
-    gEl.ondblclick = () => {
+    onDoubleClickOrTap(gEl, () => {
       const s = summary.find(x => x.group === grp);
       if (s) openDrawer(grp, stats([...s.belowRows, ...s.withinRows, ...s.aboveRows], m));
-    };
+    });
   });
 
   $('densityTable').querySelectorAll('.density-seg').forEach(segEl => {
@@ -734,7 +753,7 @@ function renderDensity(rows) {
       const rowEl = segEl.closest('.density-row');
       rowEl.onclick();
     };
-    segEl.ondblclick = (e) => {
+    onDoubleClickOrTap(segEl, (e) => {
       e.stopPropagation();
       const rowEl = segEl.closest('.density-row');
       const grp = rowEl.dataset.group;
@@ -744,7 +763,7 @@ function renderDensity(rows) {
       const segRows = segKey === 'below' ? s.belowRows : segKey === 'above' ? s.aboveRows : s.withinRows;
       const segLabel = segKey === 'below' ? 'Below' : segKey === 'above' ? 'Above' : 'Within';
       openDrawer(`${grp} — ${segLabel}`, stats(segRows, m));
-    };
+    });
   });
 }
 function niceStep(raw) {
