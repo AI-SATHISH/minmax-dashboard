@@ -698,9 +698,9 @@ function renderDensity(rows) {
 
   $('densityTable').innerHTML = `
     <div style="padding:10px 16px 4px; display:flex; gap:20px; flex-wrap:wrap; align-items:center; font-size:12px; color:var(--muted);">
-      <span style="display:inline-flex; align-items:center; gap:6px;"><span style="width:14px;height:14px;background:${COL_BELOW};display:inline-block;border-radius:3px;"></span>Below avg −10%</span>
-      <span style="display:inline-flex; align-items:center; gap:6px;"><span style="width:14px;height:14px;background:${COL_WITHIN};display:inline-block;border-radius:3px;"></span>Within ±10% (density)</span>
-      <span style="display:inline-flex; align-items:center; gap:6px;"><span style="width:14px;height:14px;background:${COL_ABOVE};display:inline-block;border-radius:3px;"></span>Above avg +10%</span>
+      <span style="display:inline-flex; align-items:center; gap:6px;"><span style="width:14px;height:14px;background:${COL_BELOW};display:inline-block;border-radius:3px;"></span>Below</span>
+      <span style="display:inline-flex; align-items:center; gap:6px;"><span style="width:14px;height:14px;background:${COL_WITHIN};display:inline-block;border-radius:3px;"></span>Within</span>
+      <span style="display:inline-flex; align-items:center; gap:6px;"><span style="width:14px;height:14px;background:${COL_ABOVE};display:inline-block;border-radius:3px;"></span>Above</span>
     </div>
     <svg viewBox="0 0 ${VBW} ${totalH}" preserveAspectRatio="xMidYMid meet" style="width:100%; height:auto; display:block;">
       ${gridSvg}
@@ -734,7 +734,7 @@ function renderDensity(rows) {
       if (!s) return;
       const segKey = segEl.dataset.seg;
       const segRows = segKey === 'below' ? s.belowRows : segKey === 'above' ? s.aboveRows : s.withinRows;
-      const segLabel = segKey === 'below' ? 'Below avg −10%' : segKey === 'above' ? 'Above avg +10%' : 'Within ±10%';
+      const segLabel = segKey === 'below' ? 'Below' : segKey === 'above' ? 'Above' : 'Within';
       openDrawer(`${grp} — ${segLabel}`, stats(segRows, m));
     };
   });
