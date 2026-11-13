@@ -215,6 +215,14 @@
     </div>
 
 
+  <section class="panel" style="margin-top:14px;" id="compRatioPanel">
+    <div class="phead">
+      <h2 id="compRatioTitle">Comp Ratio — Designation Comparison</h2>
+    </div>
+    <div id="compRatioChart"></div>
+    <div class="foot" id="compRatioFoot">Each bubble is one group. X-axis = average salary, Y-axis = Comp Ratio − 100% (0 = exactly at the band midpoint). <span style="color:var(--min);font-weight:600">Green</span> = below 90% (underpaid) · <span style="font-weight:600">Pink</span> = 90–110% (normal) · <span style="color:var(--max);font-weight:600">Orange</span> = above 110% (overpaid). Hover a bubble for details.</div>
+  </section>
+
   <section class="panel" style="margin-top:14px;" id="recruiterPanel">
     <div class="phead">
       <h2>🎯 Pre Offer Check</h2>
@@ -581,6 +589,7 @@ function render() {
   const chartRows = (state.chartFilterGroup != null) ? rows.filter(r => (r[g] || '(blank)') === state.chartFilterGroup) : rows;
   renderChart(chartRows);
   renderDensity(rows);
+  renderCompRatioChart();
   syncLeftTableHeight();
 }
 
@@ -828,6 +837,79 @@ function renderDensity(rows) {
 }
 
 // ---- Salary vs Count chart (removed) ----
+
+// Quadrant-style bubble chart: one bubble per group (whatever state.groupBy
+// currently is — Designation, Band, Department, etc). X = average salary,
+// Y = Comp Ratio − 100%, so a bold horizontal line through the middle of
+// the plot marks "exactly at the band midpoint" — groups above it are
+// running hot (overpaid vs their own min/max band), groups below are
+// running cold (underpaid). Mirrors the familiar quadrant-scatter look
+// (e.g. Trading Economics' commodity charts) but X can't go negative here
+// since salary never is, so only the Y=0 line is drawn as a true crossing.
+function renderCompRatioChart() {
+  const g = state.groupBy, gLabel = label(GROUPS, g);
+  $('compRatioTitle').textContent = `Comp Ratio — ${gLabel} Comparison`;
+  const el = $('compRatioChart');
+  const pts = (state.summary || []).filter(s => s.avg != null && s.compaRatio != null);
+  if (!pts.length) { el.innerHTML = '<div class="empty">No data to chart.</div>'; return; }
+
+  const W = 900, H = 420, padL = 70, padR = 20, padT = 20, padB = 46;
+  const plotW = W - padL - padR, plotH = H - padT - padB;
+
+  const xs = pts.map(p => p.avg);
+  const ys = pts.map(p => p.compaRatio - 100);
+  const xMin = Math.min(...xs) * 0.95, xMax = Math.max(...xs) * 1.05;
+  const yAbs = Math.max(20, Math.max(...ys.map(Math.abs)) * 1.15);
+  const yMin = -yAbs, yMax = yAbs;
+
+  const x = v => padL + (v - xMin) / ((xMax - xMin) || 1) * plotW;
+  const y = v => padT + plotH - (v - yMin) / ((yMax - yMin) || 1) * plotH;
+
+  const color = cr => cr < 90 ? 'var(--min)' : cr > 110 ? 'var(--max)' : 'var(--accent)';
+  const niceStepLocal = raw => { const p = Math.pow(10, Math.floor(Math.log10(raw || 1))), f = raw / p; return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 5 ? 5 : 10) * p; };
+
+  // X-axis ticks (bottom, ascending salary — never negative so no vertical 0-line)
+  const xTickStep = niceStepLocal((xMax - xMin) / 6);
+  let xTicks = '';
+  for (let v = Math.ceil(xMin / xTickStep) * xTickStep; v <= xMax; v += xTickStep) {
+    xTicks += `<line x1="${x(v)}" y1="${padT}" x2="${x(v)}" y2="${padT + plotH}" stroke="var(--border)" stroke-dasharray="2,3"/>
+      <text x="${x(v)}" y="${padT + plotH + 18}" text-anchor="middle" font-size="11" fill="var(--muted)">${kpiFmt(v)}</text>`;
+  }
+  // Y-axis ticks
+  const yTickStep = niceStepLocal(yAbs / 4);
+  let yTicks = '';
+  for (let v = -Math.floor(yAbs / yTickStep) * yTickStep; v <= yMax; v += yTickStep) {
+    if (Math.abs(v) < yTickStep / 2) continue; // skip near-zero, the bold 0-line covers it
+    yTicks += `<line x1="${padL}" y1="${y(v)}" x2="${padL + plotW}" y2="${y(v)}" stroke="var(--border)" stroke-dasharray="2,3"/>
+      <text x="${padL - 10}" y="${y(v)}" dy="0.35em" text-anchor="end" font-size="11" fill="var(--muted)">${v > 0 ? '+' : ''}${v.toFixed(0)}%</text>`;
+  }
+
+  // Alternate label vertical offset slightly per point to reduce overlap
+  // when several groups sit close together in salary/ratio space.
+  const bubbles = pts.map((p, i) => {
+    const cx = x(p.avg), cy = y(p.compaRatio - 100);
+    const r = Math.max(4, Math.min(9, 3 + Math.sqrt(p.n)));
+    const dy = (i % 2 === 0) ? -r - 6 : r + 14;
+    return `<g>
+      <circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${r.toFixed(1)}" fill="${color(p.compaRatio)}" fill-opacity="0.75" stroke="${color(p.compaRatio)}" stroke-width="1.2">
+        <title>${esc(p.group)}: Average ${inrFull(p.avg)}, Comp Ratio ${p.compaRatio.toFixed(1)}%, ${p.n} employee(s)</title>
+      </circle>
+      ${pts.length <= 40 ? `<text x="${cx.toFixed(1)}" y="${(cy + dy).toFixed(1)}" text-anchor="middle" font-size="10.5" font-weight="700" fill="var(--text)">${esc(p.group)}</text>` : ''}
+    </g>`;
+  }).join('');
+
+  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" style="width:100%; height:auto; display:block;">
+    ${xTicks}${yTicks}
+    <line x1="${padL}" y1="${y(0)}" x2="${padL + plotW}" y2="${y(0)}" stroke="var(--text)" stroke-width="2"/>
+    <text x="${padL + plotW - 4}" y="${y(0) - 8}" text-anchor="end" font-size="11" font-weight="700" fill="var(--text)">0% (at midpoint)</text>
+    <line x1="${padL}" y1="${padT}" x2="${padL}" y2="${padT + plotH}" stroke="var(--text)"/>
+    <line x1="${padL}" y1="${padT + plotH}" x2="${padL + plotW}" y2="${padT + plotH}" stroke="var(--text)"/>
+    <text x="${padL + plotW / 2}" y="${H - 6}" text-anchor="middle" font-size="12" font-weight="600" fill="var(--text)">Average Salary</text>
+    <text x="14" y="${padT + plotH / 2}" text-anchor="middle" font-size="12" font-weight="600" fill="var(--text)" transform="rotate(-90, 14, ${padT + plotH / 2})">Comp Ratio − 100%</text>
+    ${bubbles}
+  </svg>
+  ${pts.length > 40 ? `<div class="foot" style="padding-top:6px;">${pts.length} groups plotted — labels hidden above 40 groups to avoid clutter; hover a bubble for details, or switch "Group by" to a smaller dimension (e.g. Band) to see labels.</div>` : ''}`;
+}
 
 function showEmployeeInfo(r, m, mLabel) {
   $('drawerTitle').textContent = 'Employee';
