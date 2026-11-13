@@ -1140,7 +1140,7 @@ function initRecruiterTool() {
         <div class="panel kpi"><div class="label">Band Max</div><div class="value">${fmt(s.max)}</div></div>
         <div class="panel kpi"><div class="label">Sample Size</div><div class="value">${s.n}</div></div>
       </div>
-      <div class="kpis" style="margin-bottom:12px; grid-template-columns: 1.4fr repeat(3,1fr); background:#fbeaf0; border-radius:10px; padding:4px;">
+      <div class="kpis" style="margin-bottom:12px; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); background:#fbeaf0; border-radius:10px; padding:4px;">
         <div class="kpi" style="background:transparent; padding:14px;"><div class="label" style="color:#72243e;">Median (P50)</div><div style="font-size:38px;font-weight:600;line-height:1.1;color:#2b1a22;">${fmt(s.median)}</div><div class="sub" style="font-size:12px;color:#8a6a76;">Average ${fmt(s.avg)} ${Math.abs(s.median - s.avg) / (s.avg || 1) > 0.02 ? (s.avg > s.median ? '(pulled up by outliers)' : '(pulled down by outliers)') : ''}</div></div>
         <div class="kpi" style="background:transparent; padding:14px;"><div class="label" style="color:#72243e;">P25</div><div style="font-size:24px;font-weight:600;color:#2b1a22;">${fmt(s.p25)}</div><div class="sub" style="font-size:12px;color:#8a6a76;">Bottom of normal band</div></div>
         <div class="kpi" style="background:transparent; padding:14px;"><div class="label" style="color:#72243e;">P75</div><div style="font-size:24px;font-weight:600;color:#2b1a22;">${fmt(s.p75)}</div><div class="sub" style="font-size:12px;color:#8a6a76;">Top of normal band</div></div>
