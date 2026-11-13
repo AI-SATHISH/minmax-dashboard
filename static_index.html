@@ -484,24 +484,23 @@ function percentile(sortedVals, p) {
   return sortedVals[lo] + (sortedVals[hi] - sortedVals[lo]) * (idx - lo);
 }
 
-function renderPayHistogram(values, fmtFn) {
-  // Buckets the salary values into ~6-8 even-width bins across the actual
-  // min-max range of this designation's data (not a fixed ₹ step), so it
-  // adapts whether the metric is Gross Monthly (tens of thousands) or
-  // Annual CTC (lakhs).
+function renderPayHistogram(values, fmtFn, s) {
+  // Vertical column histogram matching the reference design: bars colored
+  // by whether they sit inside the P25–P75 "normal band" (main cluster,
+  // pink/maroon) or outside it (outlier bucket, orange), with a shaded
+  // P25–P75 band and P25/Median/P75/P90 marker lines overlaid — not a
+  // fixed ₹ step, so it adapts whether the metric is Gross Monthly or CTC.
   const n = values.length;
   if (!n) return '<div class="empty">No salary values to chart.</div>';
   const min = values[0], max = values[n - 1];
   if (min === max) {
     return `<div class="empty">All ${n} employee(s) are on the same ${fmtFn(min)} value — no spread to chart.</div>`;
   }
-  const BUCKET_COUNT = Math.min(8, Math.max(5, Math.ceil(Math.sqrt(n))));
+  const BUCKET_COUNT = Math.min(9, Math.max(6, Math.ceil(Math.sqrt(n)) + 1));
   const rawWidth = (max - min) / BUCKET_COUNT;
-  // Round the bucket width to a "nice" step (1/2/5 x a power of 10) so edges
-  // read as e.g. ₹1.20L–₹1.40L rather than jagged numbers.
   const magnitude = Math.pow(10, Math.floor(Math.log10(rawWidth || 1)));
   const niceSteps = [1, 2, 2.5, 5, 10];
-  let width = magnitude * niceSteps.find(s => magnitude * s >= rawWidth) || rawWidth;
+  let width = magnitude * niceSteps.find(st => magnitude * st >= rawWidth) || rawWidth;
   if (!width || !isFinite(width)) width = rawWidth || 1;
   const startEdge = Math.floor(min / width) * width;
   const bins = [];
@@ -514,23 +513,74 @@ function renderPayHistogram(values, fmtFn) {
     bins[bi].count++;
   });
   const maxCount = Math.max(...bins.map(b => b.count), 1);
+  const endEdge = startEdge + bins.length * width;
 
-  const VBW = 560, ROW_H = 34, LABEL_W = 150, PAD_TOP = 8, R_PAD = 50;
-  const plotW = VBW - LABEL_W - R_PAD;
-  const totalH = PAD_TOP + bins.length * ROW_H + 6;
-  const barColor = '#7c5cfc';
-  const rows = bins.map((b, i) => {
-    const y = PAD_TOP + i * ROW_H, barH = ROW_H - 10;
-    const w = (b.count / maxCount) * plotW;
-    const labelTxt = `${fmtFn(b.lo)} – ${fmtFn(b.hi)}`;
+  const COL_MAIN = '#b03a6e', COL_OUT = '#eb6834', COL_PCT = '#1baf7a';
+  const W = 760, L = 42, R = 14, T = 46, B = 46, H = 320;
+  const plotW = W - L - R, plotH = H - T - B;
+  const x = v => L + (v - startEdge) / (endEdge - startEdge) * plotW;
+  const y = v => T + (1 - v / maxCount) * plotH;
+
+  // Grid + Y-axis count ticks
+  const yTickStep = Math.max(1, Math.ceil(maxCount / 5));
+  let grid = '';
+  for (let v = 0; v <= maxCount; v += yTickStep) {
+    grid += `<line x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}" stroke="#eee"/><text x="${L - 6}" y="${y(v) + 4}" text-anchor="end" font-size="11" fill="#999">${v}</text>`;
+  }
+
+  // Shaded P25–P75 normal band, drawn first (behind bars)
+  const band = (s && s.p25 != null && s.p75 != null)
+    ? `<rect x="${x(Math.max(startEdge, s.p25)).toFixed(1)}" y="${T - 10}" width="${(x(Math.min(endEdge, s.p75)) - x(Math.max(startEdge, s.p25))).toFixed(1)}" height="${plotH + 10}" fill="${COL_PCT}" fill-opacity="0.12"/>`
+    : '';
+
+  const bars = bins.map(b => {
+    if (!b.count) return '';
+    const x0 = x(b.lo) + 1.5, x1 = x(b.hi) - 1.5;
+    const isOutlier = s && s.p25 != null && s.p75 != null && (b.hi <= s.p25 || b.lo >= s.p75);
+    const color = isOutlier ? COL_OUT : COL_MAIN;
+    const labelTxt = `${fmtFn(b.lo)}–${fmtFn(b.hi)}`;
     return `<g>
-      <text x="${LABEL_W - 10}" y="${y + barH / 2}" dy="0.35em" text-anchor="end" font-size="12" font-weight="600" fill="var(--text)">${esc(labelTxt)}</text>
-      <rect x="${LABEL_W}" y="${y}" width="${Math.max(2, w).toFixed(1)}" height="${barH}" rx="4" fill="${barColor}"/>
-      <text x="${LABEL_W + Math.max(2, w) + 8}" y="${y + barH / 2}" dy="0.35em" font-size="12" font-weight="700" fill="var(--text)">${b.count}</text>
+      <rect x="${x0.toFixed(1)}" y="${y(b.count).toFixed(1)}" width="${Math.max(2, x1 - x0).toFixed(1)}" height="${(y(0) - y(b.count)).toFixed(1)}" rx="4" fill="${color}">
+        <title>${esc(labelTxt)}: ${b.count} employee(s)</title>
+      </rect>
+      <text x="${((x0 + x1) / 2).toFixed(1)}" y="${(y(b.count) - 6).toFixed(1)}" text-anchor="middle" font-size="13" font-weight="700" fill="var(--text)">${b.count}</text>
     </g>`;
   }).join('');
 
-  return `<svg viewBox="0 0 ${VBW} ${totalH}" preserveAspectRatio="xMidYMid meet" style="width:100%; height:auto; display:block;">${rows}</svg>`;
+  // X-axis bucket edge labels
+  let xLabels = '';
+  bins.forEach((b, i) => {
+    if (i === 0) xLabels += `<text x="${x(b.lo).toFixed(1)}" y="${y(0) + 16}" text-anchor="middle" font-size="10.5" fill="#999">${fmtFn(b.lo)}</text>`;
+    xLabels += `<text x="${x(b.hi).toFixed(1)}" y="${y(0) + 16}" text-anchor="middle" font-size="10.5" fill="#999">${fmtFn(b.hi)}</text>`;
+  });
+
+  // Percentile marker lines (P25 / Median / P75 / P90), labels alternating
+  // height to reduce overlap when markers sit close together.
+  let markers = '';
+  if (s) {
+    const marks = [['P25', s.p25], ['Median', s.median], ['P75', s.p75], ['P90', s.p90]].filter(([, v]) => v != null && v >= startEdge && v <= endEdge);
+    marks.forEach(([lbl, v], i) => {
+      const isMedian = lbl === 'Median';
+      markers += `<line x1="${x(v).toFixed(1)}" x2="${x(v).toFixed(1)}" y1="${T - 10}" y2="${y(0)}" stroke="${COL_PCT}" stroke-width="${isMedian ? 2.5 : 1.5}" ${isMedian ? '' : 'stroke-dasharray="4 3"'}/>
+        <text x="${x(v).toFixed(1)}" y="${i % 2 ? T - 14 : T - 30}" text-anchor="middle" font-size="11" font-weight="${isMedian ? 700 : 500}" fill="#555">${lbl} ${fmtFn(v)}</text>`;
+    });
+  }
+
+  return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" style="width:100%; height:auto; display:block;" font-family="inherit">
+    ${band}
+    ${grid}
+    ${bars}
+    <line x1="${L}" x2="${W - R}" y1="${y(0)}" y2="${y(0)}" stroke="#bbb"/>
+    ${xLabels}
+    ${markers}
+    <text x="${(L + W - R) / 2}" y="${H - 8}" text-anchor="middle" font-size="11" fill="#999">${label(METRICS, state.metric)} · bar height = number of employees</text>
+  </svg>
+  <div class="legend" style="display:flex;flex-wrap:wrap;gap:16px;font-size:12px;color:#5a4650;margin-top:6px;">
+    <span style="display:flex;align-items:center;gap:5px;"><i style="width:10px;height:10px;border-radius:2px;display:inline-block;background:${COL_MAIN}"></i>Main clusters</span>
+    <span style="display:flex;align-items:center;gap:5px;"><i style="width:10px;height:10px;border-radius:2px;display:inline-block;background:${COL_OUT}"></i>Outlier buckets</span>
+    <span style="display:flex;align-items:center;gap:5px;"><i style="background:rgba(27,175,122,.15);border:1px solid ${COL_PCT};width:14px;height:10px;display:inline-block;"></i>P25–P75 normal band</span>
+    <span style="display:flex;align-items:center;gap:5px;"><i style="background:${COL_PCT};width:2px;height:12px;display:inline-block;"></i>Percentile markers</span>
+  </div>`;
 }
 
 function stats(rows, m) {
@@ -1086,15 +1136,15 @@ function initRecruiterTool() {
         <div class="panel kpi"><div class="label">Band Max</div><div class="value">${fmt(s.max)}</div></div>
         <div class="panel kpi"><div class="label">Sample Size</div><div class="value">${s.n}</div></div>
       </div>
-      <div class="kpis" style="margin-bottom:12px;">
-        <div class="panel kpi"><div class="label">Median (true middle)</div><div class="value">${fmt(s.median)}</div><div class="who">Average: ${fmt(s.avg)} ${Math.abs(s.median - s.avg) / (s.avg || 1) > 0.03 ? '(skewed by outliers)' : ''}</div></div>
-        <div class="panel kpi"><div class="label">P25 (lower normal band)</div><div class="value">${fmt(s.p25)}</div></div>
-        <div class="panel kpi"><div class="label">P75 (upper normal band)</div><div class="value">${fmt(s.p75)}</div></div>
-        <div class="panel kpi"><div class="label">P90 (top-earner threshold)</div><div class="value">${fmt(s.p90)}</div></div>
+      <div class="kpis" style="margin-bottom:12px; grid-template-columns: 1.4fr repeat(3,1fr); background:#fbeaf0; border-radius:10px; padding:4px;">
+        <div class="kpi" style="background:transparent; padding:14px;"><div class="label" style="color:#72243e;">Median (P50)</div><div style="font-size:38px;font-weight:600;line-height:1.1;color:#2b1a22;">${fmt(s.median)}</div><div class="sub" style="font-size:12px;color:#8a6a76;">Average ${fmt(s.avg)} ${Math.abs(s.median - s.avg) / (s.avg || 1) > 0.02 ? (s.avg > s.median ? '(pulled up by outliers)' : '(pulled down by outliers)') : ''}</div></div>
+        <div class="kpi" style="background:transparent; padding:14px;"><div class="label" style="color:#72243e;">P25</div><div style="font-size:24px;font-weight:600;color:#2b1a22;">${fmt(s.p25)}</div><div class="sub" style="font-size:12px;color:#8a6a76;">Bottom of normal band</div></div>
+        <div class="kpi" style="background:transparent; padding:14px;"><div class="label" style="color:#72243e;">P75</div><div style="font-size:24px;font-weight:600;color:#2b1a22;">${fmt(s.p75)}</div><div class="sub" style="font-size:12px;color:#8a6a76;">Top of normal band</div></div>
+        <div class="kpi" style="background:transparent; padding:14px;"><div class="label" style="color:#72243e;">P90</div><div style="font-size:24px;font-weight:600;color:#2b1a22;">${fmt(s.p90)}</div><div class="sub" style="font-size:12px;color:#8a6a76;">Top-earner threshold</div></div>
       </div>
       <div class="panel" style="margin-bottom:12px; padding:14px;">
         <div class="phead" style="margin-bottom:8px;"><h2 style="font-size:14px;">Pay Distribution — ${esc(desig)}</h2></div>
-        ${renderPayHistogram(s.rows.map(r => r[m]), fmt)}
+        ${renderPayHistogram(s.rows.map(r => r[m]), fmt, s)}
         <div class="foot" style="padding:8px 0 0;">Groups ${s.n} employee(s) into pay buckets — shows where the largest clusters sit, so you can target a realistic offer instead of anchoring on a skewed average.</div>
       </div>
       <div class="kpis">
