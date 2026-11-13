@@ -540,7 +540,7 @@ function renderPayHistogram(values, fmtFn, s) {
   const endEdge = startEdge + bins.length * width;
 
   const COL_MAIN = '#b03a6e', COL_OUT = '#eb6834', COL_PCT = '#1baf7a';
-  const W = 760, L = 42, R = 14, T = 46, B = 46, H = 320;
+  const W = 760, L = 42, R = 14, T = 78, B = 46, H = 352;
   const plotW = W - L - R, plotH = H - T - B;
   const x = v => L + (v - startEdge) / (endEdge - startEdge) * plotW;
   const y = v => T + (1 - v / maxCount) * plotH;
@@ -578,15 +578,28 @@ function renderPayHistogram(values, fmtFn, s) {
     xLabels += `<text x="${x(b.hi).toFixed(1)}" y="${y(0) + 16}" text-anchor="middle" font-size="10.5" fill="#999">${fmtFn(b.hi)}</text>`;
   });
 
-  // Percentile marker lines (P25 / Median / P75 / P90), labels alternating
-  // height to reduce overlap when markers sit close together.
+  // Percentile marker lines (P25 / Median / P75 / P90). Labels are placed
+  // on a lowest-available vertical level, left-to-right, tracking each
+  // level's used horizontal extent so two labels never overlap even when
+  // their percentile VALUES sit close together (common for tight/large
+  // samples) — simple alternating-height wasn't enough for that case.
   let markers = '';
   if (s) {
-    const marks = [['P25', s.p25], ['Median', s.median], ['P75', s.p75], ['P90', s.p90]].filter(([, v]) => v != null && v >= startEdge && v <= endEdge);
-    marks.forEach(([lbl, v], i) => {
+    const marks = [['P25', s.p25], ['Median', s.median], ['P75', s.p75], ['P90', s.p90]]
+      .filter(([, v]) => v != null && v >= startEdge && v <= endEdge)
+      .sort((a, b) => x(a[1]) - x(b[1]));
+    const LEVEL_H = 15, LEVELS = 4, levelRightEdge = new Array(LEVELS).fill(-Infinity);
+    marks.forEach(([lbl, v]) => {
       const isMedian = lbl === 'Median';
-      markers += `<line x1="${x(v).toFixed(1)}" x2="${x(v).toFixed(1)}" y1="${T - 10}" y2="${y(0)}" stroke="${COL_PCT}" stroke-width="${isMedian ? 2.5 : 1.5}" ${isMedian ? '' : 'stroke-dasharray="4 3"'}/>
-        <text x="${x(v).toFixed(1)}" y="${i % 2 ? T - 14 : T - 30}" text-anchor="middle" font-size="11" font-weight="${isMedian ? 700 : 500}" fill="#555">${lbl} ${fmtFn(v)}</text>`;
+      const cx = x(v);
+      const text = `${lbl} ${fmtFn(v)}`;
+      const halfW = text.length * 3.3 + 4; // rough half-width estimate for 11px text
+      let level = 0;
+      while (level < LEVELS - 1 && cx - halfW < levelRightEdge[level] + 6) level++;
+      levelRightEdge[level] = cx + halfW;
+      const ty = T - 14 - level * LEVEL_H;
+      markers += `<line x1="${cx.toFixed(1)}" x2="${cx.toFixed(1)}" y1="${T - 10}" y2="${y(0)}" stroke="${COL_PCT}" stroke-width="${isMedian ? 2.5 : 1.5}" ${isMedian ? '' : 'stroke-dasharray="4 3"'}/>
+        <text x="${cx.toFixed(1)}" y="${ty}" text-anchor="middle" font-size="11" font-weight="${isMedian ? 700 : 500}" fill="#555">${esc(text)}</text>`;
     });
   }
 
