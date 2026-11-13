@@ -394,6 +394,13 @@ function onData(payload) {
     for (const f of ['band', 'sub', 'desig', 'dept', 'role', 'costHead', 'salHead', 'loc', 'name', 'id'])
       o[f] = String(o[f] ?? '').trim();
     for (const m of METRICS) o[m.key] = num(o[m.key]);
+    // "Gross Monthly" should be the employee's TOTAL monthly gross pay —
+    // i.e. the Gross Monthly column PLUS Other Allowances Monthly — not
+    // just the base Gross Monthly column alone. Combined once here at
+    // load time so every chart/table/calculator downstream automatically
+    // uses the true total without each render function having to know.
+    o.other = num(o.other);
+    if (o.gross != null) o.gross = o.gross + (o.other || 0);
     if (idx.exp >= 0) {
       const raw = String(o.exp).trim(), label = BUCKETS.find(b => norm(b[0]) === norm(raw));
       o.expYears = label ? null : parseYears(o.exp);

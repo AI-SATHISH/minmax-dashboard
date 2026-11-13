@@ -436,6 +436,7 @@ def api_lookup_emp():
         # Active uses "Gross Monthly" / "Annual Varaible Pay"; the Attrition
         # sheets use shorter names ("Gross" / "Variable Pay") for the same data.
         gross_col_idx = _col_idx(col_to_header, "gross monthly", "gross")
+        other_col_idx = _col_idx(col_to_header, "other allowances monthly", "other allowances")
         ctc_col_idx = _col_idx(col_to_header, "annual ctc")
         vp_col_idx = _col_idx(col_to_header, "annual varaible pay", "annual variable pay", "variable pay")
 
@@ -449,6 +450,11 @@ def api_lookup_emp():
             if _is_excluded(cells, empid_col_idx):
                 return jsonify({"found": False})
 
+            # "gross" returned here is the TOTAL monthly gross pay (Gross
+            # Monthly + Other Allowances Monthly), matching how the client
+            # now computes "Gross Monthly" everywhere else.
+            gross_val = _parse_number(cells.get(gross_col_idx))
+            other_val = _parse_number(cells.get(other_col_idx)) or 0
             return jsonify({
                 "found": True,
                 "sheet": sheet_name,
@@ -457,7 +463,7 @@ def api_lookup_emp():
                 "band": cells.get(band_col_idx, ""),
                 "subBand": cells.get(sub_band_col_idx, ""),
                 "location": cells.get(location_col_idx, ""),
-                "gross": _parse_number(cells.get(gross_col_idx)),
+                "gross": (gross_val + other_val) if gross_val is not None else None,
                 "ctc": _parse_number(cells.get(ctc_col_idx)),
                 "vp": _parse_number(cells.get(vp_col_idx)),
             })
