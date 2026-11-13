@@ -220,7 +220,7 @@
       <h2 id="compRatioTitle">Comp Ratio — Designation Comparison</h2>
     </div>
     <div id="compRatioChart"></div>
-    <div class="foot" id="compRatioFoot">Each bubble is one group. X-axis = average salary, Y-axis = Comp Ratio − 100% (0 = exactly at the band midpoint). <span style="color:var(--min);font-weight:600">Green</span> = below 90% (underpaid) · <span style="font-weight:600">Pink</span> = 90–110% (normal) · <span style="color:var(--max);font-weight:600">Orange</span> = above 110% (overpaid). Hover a bubble for details.</div>
+    <div class="foot" id="compRatioFoot">Each bubble is one group. X-axis = Comp Ratio % (centered on 100% = exactly at the band midpoint), Y-axis = Average Salary. <span style="color:var(--min);font-weight:600">Green</span> = below 90% (underpaid) · <span style="font-weight:600">Pink</span> = 90–110% (normal) · <span style="color:var(--max);font-weight:600">Orange</span> = above 110% (overpaid). Hover a bubble for details.</div>
   </section>
 
   <section class="panel" style="margin-top:14px;" id="recruiterPanel">
@@ -903,14 +903,18 @@ function renderCompRatioChart() {
   const pts = (state.summary || []).filter(s => s.avg != null && s.compaRatio != null);
   if (!pts.length) { el.innerHTML = '<div class="empty">No data to chart.</div>'; return; }
 
-  const W = 900, H = 420, padL = 70, padR = 20, padT = 20, padB = 46;
+  const W = 900, H = 420, padL = 80, padR = 20, padT = 20, padB = 46;
   const plotW = W - padL - padR, plotH = H - padT - padB;
 
-  const xs = pts.map(p => p.avg);
-  const ys = pts.map(p => p.compaRatio - 100);
-  const xMin = Math.min(...xs) * 0.95, xMax = Math.max(...xs) * 1.05;
-  const yAbs = Math.max(20, Math.max(...ys.map(Math.abs)) * 1.15);
-  const yMin = -yAbs, yMax = yAbs;
+  // X = Comp Ratio, centered on 100% so the vertical axis line sits in the
+  // true middle of the plot (groups left of it are below the band
+  // midpoint, right of it are above). Y = Average Salary, ascending
+  // bottom-to-top like a normal value axis.
+  const xDevs = pts.map(p => p.compaRatio - 100);
+  const ys = pts.map(p => p.avg);
+  const xAbs = Math.max(20, Math.max(...xDevs.map(Math.abs)) * 1.15);
+  const xMin = 100 - xAbs, xMax = 100 + xAbs;
+  const yMin = Math.min(...ys) * 0.92, yMax = Math.max(...ys) * 1.08;
 
   const x = v => padL + (v - xMin) / ((xMax - xMin) || 1) * plotW;
   const y = v => padT + plotH - (v - yMin) / ((yMax - yMin) || 1) * plotH;
@@ -918,31 +922,31 @@ function renderCompRatioChart() {
   const color = cr => cr < 90 ? 'var(--min)' : cr > 110 ? 'var(--max)' : 'var(--accent)';
   const niceStepLocal = raw => { const p = Math.pow(10, Math.floor(Math.log10(raw || 1))), f = raw / p; return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 5 ? 5 : 10) * p; };
 
-  // X-axis ticks (bottom, ascending salary — never negative so no vertical 0-line)
-  const xTickStep = niceStepLocal((xMax - xMin) / 6);
+  // X-axis ticks (Comp Ratio %, centered on 100)
+  const xTickStep = niceStepLocal(xAbs / 4);
   let xTicks = '';
-  for (let v = Math.ceil(xMin / xTickStep) * xTickStep; v <= xMax; v += xTickStep) {
+  for (let v = 100 - Math.floor(xAbs / xTickStep) * xTickStep; v <= xMax; v += xTickStep) {
+    if (Math.abs(v - 100) < xTickStep / 2) continue; // skip near-100, the bold centre line covers it
     xTicks += `<line x1="${x(v)}" y1="${padT}" x2="${x(v)}" y2="${padT + plotH}" stroke="var(--border)" stroke-dasharray="2,3"/>
-      <text x="${x(v)}" y="${padT + plotH + 18}" text-anchor="middle" font-size="11" fill="var(--muted)">${kpiFmt(v)}</text>`;
+      <text x="${x(v)}" y="${padT + plotH + 18}" text-anchor="middle" font-size="11" fill="var(--muted)">${v.toFixed(0)}%</text>`;
   }
-  // Y-axis ticks
-  const yTickStep = niceStepLocal(yAbs / 4);
+  // Y-axis ticks (Average Salary)
+  const yTickStep = niceStepLocal((yMax - yMin) / 5);
   let yTicks = '';
-  for (let v = -Math.floor(yAbs / yTickStep) * yTickStep; v <= yMax; v += yTickStep) {
-    if (Math.abs(v) < yTickStep / 2) continue; // skip near-zero, the bold 0-line covers it
+  for (let v = Math.ceil(yMin / yTickStep) * yTickStep; v <= yMax; v += yTickStep) {
     yTicks += `<line x1="${padL}" y1="${y(v)}" x2="${padL + plotW}" y2="${y(v)}" stroke="var(--border)" stroke-dasharray="2,3"/>
-      <text x="${padL - 10}" y="${y(v)}" dy="0.35em" text-anchor="end" font-size="11" fill="var(--muted)">${v > 0 ? '+' : ''}${v.toFixed(0)}%</text>`;
+      <text x="${padL - 10}" y="${y(v)}" dy="0.35em" text-anchor="end" font-size="11" fill="var(--muted)">${kpiFmt(v)}</text>`;
   }
 
   // Alternate label vertical offset slightly per point to reduce overlap
-  // when several groups sit close together in salary/ratio space.
+  // when several groups sit close together in ratio/salary space.
   const bubbles = pts.map((p, i) => {
-    const cx = x(p.avg), cy = y(p.compaRatio - 100);
+    const cx = x(p.compaRatio), cy = y(p.avg);
     const r = Math.max(4, Math.min(9, 3 + Math.sqrt(p.n)));
     const dy = (i % 2 === 0) ? -r - 6 : r + 14;
     return `<g>
       <circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${r.toFixed(1)}" fill="${color(p.compaRatio)}" fill-opacity="0.75" stroke="${color(p.compaRatio)}" stroke-width="1.2">
-        <title>${esc(p.group)}: Average ${inrFull(p.avg)}, Comp Ratio ${p.compaRatio.toFixed(1)}%, ${p.n} employee(s)</title>
+        <title>${esc(p.group)}: Comp Ratio ${p.compaRatio.toFixed(1)}%, Average ${inrFull(p.avg)}, ${p.n} employee(s)</title>
       </circle>
       ${pts.length <= 40 ? `<text x="${cx.toFixed(1)}" y="${(cy + dy).toFixed(1)}" text-anchor="middle" font-size="10.5" font-weight="700" fill="var(--text)">${esc(p.group)}</text>` : ''}
     </g>`;
@@ -950,12 +954,12 @@ function renderCompRatioChart() {
 
   el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" style="width:100%; height:auto; display:block;">
     ${xTicks}${yTicks}
-    <line x1="${padL}" y1="${y(0)}" x2="${padL + plotW}" y2="${y(0)}" stroke="var(--text)" stroke-width="2"/>
-    <text x="${padL + plotW - 4}" y="${y(0) - 8}" text-anchor="end" font-size="11" font-weight="700" fill="var(--text)">0% (at midpoint)</text>
+    <line x1="${x(100)}" y1="${padT}" x2="${x(100)}" y2="${padT + plotH}" stroke="var(--text)" stroke-width="2"/>
+    <text x="${x(100) + 6}" y="${padT + 12}" text-anchor="start" font-size="11" font-weight="700" fill="var(--text)">100% (at midpoint)</text>
     <line x1="${padL}" y1="${padT}" x2="${padL}" y2="${padT + plotH}" stroke="var(--text)"/>
     <line x1="${padL}" y1="${padT + plotH}" x2="${padL + plotW}" y2="${padT + plotH}" stroke="var(--text)"/>
-    <text x="${padL + plotW / 2}" y="${H - 6}" text-anchor="middle" font-size="12" font-weight="600" fill="var(--text)">Average Salary</text>
-    <text x="14" y="${padT + plotH / 2}" text-anchor="middle" font-size="12" font-weight="600" fill="var(--text)" transform="rotate(-90, 14, ${padT + plotH / 2})">Comp Ratio − 100%</text>
+    <text x="${padL + plotW / 2}" y="${H - 6}" text-anchor="middle" font-size="12" font-weight="600" fill="var(--text)">Comp Ratio %</text>
+    <text x="14" y="${padT + plotH / 2}" text-anchor="middle" font-size="12" font-weight="600" fill="var(--text)" transform="rotate(-90, 14, ${padT + plotH / 2})">Average Salary</text>
     ${bubbles}
   </svg>
   ${pts.length > 40 ? `<div class="foot" style="padding-top:6px;">${pts.length} groups plotted — labels hidden above 40 groups to avoid clutter; hover a bubble for details, or switch "Group by" to a smaller dimension (e.g. Band) to see labels.</div>` : ''}`;
