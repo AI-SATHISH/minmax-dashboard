@@ -140,7 +140,7 @@
   /* View only: no selecting/copying text and nothing to print */
   body { -webkit-user-select: none; user-select: none; }
   input { -webkit-user-select: text; user-select: text; }
-  @media print { body * { display: none !important; } body::after { content: "Printing is disabled for this dashboard."; } }
+  @media print { body:not(.printing-preoffer) * { display: none !important; } body:not(.printing-preoffer)::after { content: "Printing is disabled for this dashboard."; } }
   .tablewrap { -webkit-overflow-scrolling: touch; }
   @media (max-width: 640px) {
     .kpi .value { font-size: 18px; } h1 { font-size: 19px; }
@@ -154,6 +154,17 @@
     .controls { gap: 6px 10px; }
     #chart svg { min-width: 480px; }
     .chartbody { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  }
+  #print-header { display: none; }
+  @media print {
+    body.printing-preoffer > .wrap > *:not(#recruiterPanel) { display: none !important; }
+    body.printing-preoffer #recruiterPanel { margin: 0 !important; box-shadow: none !important; border: none !important; }
+    body.printing-preoffer #recruiterPanel > .phead,
+    body.printing-preoffer #recruiterForm,
+    body.printing-preoffer .seg,
+    body.printing-preoffer #pdfBtn { display: none !important; }
+    body.printing-preoffer #recruiterResult .panel { box-shadow: none !important; border: 1px solid #ddd !important; }
+    body.printing-preoffer #print-header { display: block !important; margin-bottom: 16px; }
   }
 </style>
 </head>
@@ -213,7 +224,7 @@
         <div class="foot" id="densityFoot">If an employee falls in <span style="color:#3b82f6;font-weight:600">Blue</span>: they are paid too low for their role. In <span style="color:var(--min);font-weight:600">Green</span>: their pay is fair/normal. In <span style="color:var(--max);font-weight:600">Orange</span>: they are paid too high for their role.</div>
       </section>
     </div>
-
+  </div>
 
   <section class="panel" style="margin-top:14px;" id="compRatioPanel">
     <div class="phead">
@@ -246,7 +257,11 @@
         <label>Designation<select id="rDesig"><option value="">Select…</option></select></label>
         <label>Salary metric<select id="rMetric"></select></label>
         <label id="rSalaryLabel"><span id="rSalaryLabelText">Proposed / Actual Salary</span><input type="number" id="rSalary" placeholder="e.g. 65000"></label>
-        <div class="actions"><button class="btn primary" id="rCalcBtn">Calculate</button></div>
+        <div class="actions"><button class="btn primary" id="rCalcBtn">Calculate</button><button class="btn" id="pdfBtn" style="display:none;" onclick="downloadPreOfferPDF()">⬇ Download PDF</button></div>
+      </div>
+      <div id="print-header">
+        <h2 style="font-size:18px;margin-bottom:2px;">Pre Offer Check — Pay Band Report</h2>
+        <div class="sub" id="print-header-sub"></div>
       </div>
       <div id="recruiterResult" style="margin-top:16px;"></div>
     </div>
@@ -1083,6 +1098,7 @@ function initRecruiterTool() {
     const out = $('recruiterResult');
     const isReplacement = state.hireType === 'replacement';
     const empId = $('rEmpId').value.trim();
+    $('pdfBtn').style.display = 'none'; // re-shown only once a new calculation succeeds below
 
     if (isReplacement && !empId) { out.innerHTML = '<div class="status err">Enter the EMP ID of the employee being replaced.</div>'; return; }
 
@@ -1200,7 +1216,35 @@ function initRecruiterTool() {
         <span style="font-weight:600;">${penFromMax != null && penFromMax > 0 ? 'Overpaid — this salary is above the band maximum.' : ''}${(penFromMin != null && penFromMin < 0 && penFromMax != null && penFromMax > 0) ? ' ' : ''}${penFromMin != null && penFromMin < 0 ? 'Underpaid — this salary is below the band minimum.' : ''}</span>
       </div>` : ''}
       <div class="foot" style="padding:12px 0 0;">Based on ${s.n} employee(s) with valid ${esc(mLabel)} in ${esc(desig)}${dept ? ' · ' + esc(dept) : ''}${band ? ' · Band ' + esc(band) : ''}${loc ? ' · ' + esc(loc) : ' · All Locations'}.</div>`;
+
+    // Reveal the PDF button and fill the print-only header now that a
+    // calculation succeeded — downloadPreOfferPDF() reads this text plus
+    // whatever is currently in #recruiterResult, so it always matches what
+    // the recruiter is looking at on screen.
+    $('pdfBtn').style.display = '';
+    $('print-header-sub').textContent = `${esc_(desig)}${dept ? ' · ' + esc_(dept) : ''}${loc ? ' · ' + esc_(loc) : ' · All Locations'} · ${mLabel} · Generated ${new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}`;
   };
+}
+
+// Plain-text escape for use outside template literals (print header is set
+// via textContent so no HTML escaping is actually needed, but keep inputs
+// as plain strings either way).
+function esc_(v) { return String(v ?? ''); }
+
+// Uses the browser's native print-to-PDF ("Save as PDF" in the print
+// dialog) scoped to just the Pre Offer Check result via @media print CSS —
+// no external library/CDN needed, keeping this a self-contained file. The
+// keyboard shortcut Ctrl+P is blocked elsewhere (anti-misuse), but calling
+// window.print() directly from this button still works since that block
+// only intercepts the keydown event, not the print API itself.
+function downloadPreOfferPDF() {
+  document.body.classList.add('printing-preoffer');
+  const cleanup = () => document.body.classList.remove('printing-preoffer');
+  // afterprint fires once the print dialog closes (or the save completes);
+  // also clean up on a timeout as a fallback for browsers that don't fire it.
+  window.addEventListener('afterprint', cleanup, { once: true });
+  setTimeout(cleanup, 5000);
+  window.print();
 }
 
 // ---- Drawer ----
