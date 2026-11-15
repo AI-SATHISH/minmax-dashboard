@@ -68,7 +68,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 # Name and Emp ID are intentionally excluded — kept confidential, never sent to the browser.
 VISIBLE_COLUMNS = {
     "band", "sub band", "designation",
-    "department", "role", "salary heads", "costing heads", "doj", "date of joining", "location",
+    "department", "sub department", "role", "salary heads", "costing heads", "doj", "date of joining", "location",
     "gross monthly", "other allowances monthly", "annual varaible pay", "annual variable pay",
     "annual ctc", "exp", "experience", "total exp", "total experience", "exp tenure",
     "experience (years)", "total experience (years)", "total experience (in years)",

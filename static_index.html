@@ -281,7 +281,7 @@
 // ---- Column mapping: matched by header text, so column order in the sheet can change ----
 const FIELDS = {
   id: ['emp id', 'employee id'], name: ['emp name', 'employee name'], band: ['band'], sub: ['sub band'],
-  desig: ['designation'], dept: ['department'], role: ['role'], salHead: ['salary heads'],
+  desig: ['designation'], dept: ['department'], subDept: ['sub department'], role: ['role'], salHead: ['salary heads'],
   costHead: ['costing heads'], doj: ['doj', 'date of joining'], loc: ['location'], gross: ['gross monthly'],
   other: ['other allowances monthly'], vp: ['annual varaible pay', 'annual variable pay'], ctc: ['annual ctc'],
   // Optional: total experience. If present it drives the tenure chart, otherwise tenure is worked out from DOJ.
@@ -294,11 +294,11 @@ const METRICS = [
 ];
 const GROUPS = [
   { key: 'desig', label: 'Designation' }, { key: 'band', label: 'Band' },
-  { key: 'dept', label: 'Department' }, { key: 'role', label: 'Role' }, { key: 'costHead', label: 'Costing Head' },
+  { key: 'dept', label: 'Department' }, { key: 'subDept', label: 'Sub Department' }, { key: 'role', label: 'Role' }, { key: 'costHead', label: 'Costing Head' },
   { key: 'salHead', label: 'Salary Head' }, { key: 'loc', label: 'Location' }
 ];
 const FILTERS = [
-  { key: 'costHead', label: 'Costing Head' }, { key: 'dept', label: 'Department' }, { key: 'desig', label: 'Designation' },
+  { key: 'costHead', label: 'Costing Head' }, { key: 'dept', label: 'Department' }, { key: 'subDept', label: 'Sub Department' }, { key: 'desig', label: 'Designation' },
   { key: 'role', label: 'Role' }, { key: 'loc', label: 'Location' },
   { key: 'tenure', label: 'EXP Tenure' }
 ];
@@ -415,7 +415,7 @@ function onData(payload) {
   state.data = payload.rows.map(r => {
     const o = {};
     for (const f in idx) o[f] = idx[f] < 0 ? '' : r[idx[f]];
-    for (const f of ['band', 'sub', 'desig', 'dept', 'role', 'costHead', 'salHead', 'loc', 'name', 'id'])
+    for (const f of ['band', 'sub', 'desig', 'dept', 'subDept', 'role', 'costHead', 'salHead', 'loc', 'name', 'id'])
       o[f] = String(o[f] ?? '').trim();
     for (const m of METRICS) o[m.key] = num(o[m.key]);
     // "Gross Monthly" should be the employee's TOTAL monthly gross pay —
