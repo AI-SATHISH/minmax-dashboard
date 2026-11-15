@@ -1157,10 +1157,24 @@ function initRecruiterTool() {
 
     const matches = state.data.filter(d =>
       (!loc || d.loc === loc) && (!dept || d.dept === dept) && (!band || String(d.band) === band) && d.desig === desig);
-    const s = stats(matches, m);
+    let s = stats(matches, m);
+
+    // Fallback: if nobody currently active matches this exact Location +
+    // Department + Band + Designation (common when replacing someone whose
+    // specific team/location combo no longer has anyone in it — e.g. they
+    // were the last person there before leaving), widen to company-wide
+    // data for just the Designation so the recruiter still gets a useful
+    // comparison instead of a dead end. Clearly labelled as broader so it's
+    // never mistaken for the exact combo.
+    let usedFallback = false;
+    if (!s.n) {
+      const broadMatches = state.data.filter(d => d.desig === desig);
+      const broadStats = stats(broadMatches, m);
+      if (broadStats.n) { s = broadStats; usedFallback = true; }
+    }
 
     if (!s.n) {
-      out.innerHTML = `<div class="status err">No ${esc(mLabel)} data found for this combination (${s.count} employee(s) matched, none with a valid value).</div>`;
+      out.innerHTML = `<div class="status err">No ${esc(mLabel)} data found for this combination (${s.count} employee(s) matched, none with a valid value) — and no active employees company-wide hold the designation "${esc(desig)}" either.</div>`;
       return;
     }
 
@@ -1216,6 +1230,7 @@ function initRecruiterTool() {
 
     out.innerHTML = `
       ${replacementBlock}
+      ${usedFallback ? `<div style="display:flex; align-items:center; gap:10px; margin-bottom:12px; padding:10px 14px; border:1px solid var(--accent); border-radius:8px; background:var(--accent-soft); font-weight:600;">⚠ No active employees match Location${loc ? ` (${esc(loc)})` : ''} / Department${dept ? ` (${esc(dept)})` : ''} / Band${band ? ` (${esc(band)})` : ''} for "${esc(desig)}" — showing company-wide data for this designation instead (${s.n} employee(s), any location/department/band).</div>` : ''}
       <div class="kpis" style="margin-bottom:12px;">
         <div class="panel kpi"><div class="label">Band Min</div><div class="value">${fmt(s.min)}</div></div>
         <div class="panel kpi"><div class="label">Band Average</div><div class="value">${fmt(mid)}</div></div>
