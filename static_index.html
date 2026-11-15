@@ -1061,8 +1061,11 @@ function initRecruiterTool() {
 
   // Auto-fill Location/Department/Band/Designation from the looked-up
   // employee being replaced, so the recruiter doesn't have to re-select
-  // what the system already knows from the EMP ID.
-  $('rEmpId').onblur = async () => {
+  // what the system already knows from the EMP ID. Runs on a short debounce
+  // while typing (not just on blur) so the recruiter doesn't have to click
+  // away from the field to see the auto-fill happen.
+  let empLookupTimer = null;
+  async function runEmpLookup() {
     if (state.hireType !== 'replacement') return;
     const empId = $('rEmpId').value.trim();
     if (!empId) return;
@@ -1071,11 +1074,15 @@ function initRecruiterTool() {
       const data = await resp.json();
       if (!data.found) return;
       if (data.location) { $('rLoc').value = data.location; refreshDept(); }
-      if (data.department) { $('rDept').value = data.department; refreshBand(); }
-      if (data.band != null) { $('rBand').value = String(data.band); refreshDesig(); }
+      if (data.department) { $('rDept').value = data.department; refreshBand(data.band); }
+      else { refreshBand(data.band); }
+      if (data.band != null && data.band !== '') { $('rBand').value = String(data.band); refreshDesig(data.designation); }
+      else { refreshDesig(data.designation); }
       if (data.designation) { $('rDesig').value = data.designation; }
     } catch (e) { /* silent — Calculate will re-validate the EMP ID anyway */ }
-  };
+  }
+  $('rEmpId').oninput = () => { clearTimeout(empLookupTimer); empLookupTimer = setTimeout(runEmpLookup, 450); };
+  $('rEmpId').onblur = runEmpLookup;
 
   const uniq = (key, filterFn) => [...new Set(state.data.filter(filterFn).map(d => d[key]).filter(Boolean))].sort(natural);
 
@@ -1088,14 +1095,20 @@ function initRecruiterTool() {
     const opts = uniq('dept', d => !loc || d.loc === loc);
     $('rDept').innerHTML = '<option value="">Select…</option>' + opts.map(o => `<option>${esc(o)}</option>`).join('');
   }
-  function refreshBand() {
+  function refreshBand(forceInclude) {
     const loc = $('rLoc').value, dept = $('rDept').value;
     const opts = uniq('band', d => (!loc || d.loc === loc) && (!dept || d.dept === dept));
+    // When replacing someone who's already left (so their old band/dept
+    // combo may have zero ACTIVE employees left in it), still show their
+    // actual band as an option — otherwise the dropdown silently ends up
+    // blank even though the lookup correctly found their band.
+    if (forceInclude != null && forceInclude !== '' && !opts.includes(String(forceInclude))) opts.push(String(forceInclude));
     $('rBand').innerHTML = '<option value="">Select…</option>' + opts.map(o => `<option>${esc(o)}</option>`).join('');
   }
-  function refreshDesig() {
+  function refreshDesig(forceInclude) {
     const loc = $('rLoc').value, dept = $('rDept').value, band = $('rBand').value;
     const opts = uniq('desig', d => (!loc || d.loc === loc) && (!dept || d.dept === dept) && (!band || String(d.band) === band));
+    if (forceInclude && !opts.includes(forceInclude)) opts.push(forceInclude);
     $('rDesig').innerHTML = '<option value="">Select…</option>' + opts.map(o => `<option>${esc(o)}</option>`).join('');
   }
 
