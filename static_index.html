@@ -1230,7 +1230,6 @@ function initRecruiterTool() {
 
     out.innerHTML = `
       ${replacementBlock}
-      ${usedFallback ? `<div style="display:flex; align-items:center; gap:10px; margin-bottom:12px; padding:10px 14px; border:1px solid var(--accent); border-radius:8px; background:var(--accent-soft); font-weight:600;">⚠ No active employees match Location${loc ? ` (${esc(loc)})` : ''} / Department${dept ? ` (${esc(dept)})` : ''} / Band${band ? ` (${esc(band)})` : ''} for "${esc(desig)}" — showing company-wide data for this designation instead (${s.n} employee(s), any location/department/band).</div>` : ''}
       <div class="kpis" style="margin-bottom:12px;">
         <div class="panel kpi"><div class="label">Band Min</div><div class="value">${fmt(s.min)}</div></div>
         <div class="panel kpi"><div class="label">Band Average</div><div class="value">${fmt(mid)}</div></div>
